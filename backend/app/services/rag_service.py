@@ -1,175 +1,132 @@
+"""
+RAG Service - Qdrant Version
+Version: Support Qdrant Vector Database
+"""
+
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
+from typing import List
+import traceback
+
 from app.config import settings
-from app.models import TaxCalculationRequest, TaxCalculationResult
+
 
 class RAGService:
-    """
-    จัดการ RAG Pipeline
-    - เชื่อมต่อกับ Qdrant Vector Database
-    - ค้นหาข้อมูลที่เกี่ยวข้อง (Retrieval)
-    - ส่งข้อมูลไปให้ AI Service (Augmented Generation)
-    """
+    """RAG Service สำหรับ Qdrant Vector Database"""
     
     def __init__(self):
-        # Initialize Qdrant Client
-        self.qdrant_client = QdrantClient(
-            url=settings.qdrant_url,
-            timeout=30
-        )
-        
-        # Initialize Embeddings
         self.embeddings = OpenAIEmbeddings(
             openai_api_key=settings.openai_api_key
         )
-        
-        # Initialize Vector Store
-        try:
-            self.vector_store = Qdrant(
-                client=self.qdrant_client,
-                collection_name=settings.qdrant_collection_name,
-                embeddings=self.embeddings
-            )
-        except Exception as e:
-            print(f"Warning: Could not connect to Qdrant: {e}")
-            self.vector_store = None
+        self.vector_store = None
+        self.qdrant_client = None
+        self._connect_to_qdrant()
     
-    def _build_search_query(
-        self,
-        request: TaxCalculationRequest,
-        tax_result: TaxCalculationResult
-    ) -> str:
-        """
-        สร้าง Query สำหรับค้นหาใน Vector DB
-        
-        Args:
-            request: ข้อมูลผู้ใช้
-            tax_result: ผลการคำนวณภาษี
-            
-        Returns:
-            Query string
-        """
-        # สร้าง query ที่เฉพาะเจาะจง
-        query_parts = [
-            f"วิธีลดภาษีสำหรับคนที่มีรายได้ {tax_result.gross_income:,.0f} บาท",
-            f"ต้องเสียภาษี {tax_result.tax_amount:,.0f} บาท"
-        ]
-        
-        # เพิ่มข้อมูลความเสี่ยง
-        if request.risk_tolerance == "low":
-            query_parts.append("ต้องการความเสี่ยงต่ำ ปลอดภัย")
-        elif request.risk_tolerance == "high":
-            query_parts.append("รับความเสี่ยงสูงได้ ผลตอบแทนสูง")
-        else:
-            query_parts.append("ความเสี่ยงปานกลาง สมดุล")
-        
-        # เพิ่มข้อมูลว่ามีการลงทุนอะไรบ้างแล้ว
-        existing_investments = []
-        if request.rmf > 0:
-            existing_investments.append("RMF")
-        if request.ssf > 0:
-            existing_investments.append("SSF")
-        if request.life_insurance > 0:
-            existing_investments.append("ประกันชีวิต")
-        if request.pension_insurance > 0:
-            existing_investments.append("ประกันบำนาญ")
-        
-        if existing_investments:
-            query_parts.append(f"มีการลงทุนใน {', '.join(existing_investments)} แล้ว")
-        
-        return " ".join(query_parts)
-    
-    async def retrieve_relevant_documents(
-        self,
-        request: TaxCalculationRequest,
-        tax_result: TaxCalculationResult
-    ) -> str:
-        """
-        ค้นหาเอกสารที่เกี่ยวข้องจาก Vector DB
-        
-        Args:
-            request: ข้อมูลผู้ใช้
-            tax_result: ผลการคำนวณภาษี
-            
-        Returns:
-            ข้อความที่รวมเอกสารที่เกี่ยวข้อง
-        """
-        if not self.vector_store:
-            print("Warning: Vector store not available, using fallback context")
-            return self._get_fallback_context()
-        
+    def _connect_to_qdrant(self):
+        """เชื่อมต่อกับ Qdrant"""
         try:
-            # สร้าง query
-            query = self._build_search_query(request, tax_result)
+            print(f"🔍 Connecting to Qdrant at: {settings.qdrant_url}")
+            print(f"📦 Collection: {settings.qdrant_collection_name}")
             
-            print(f"RAG Query: {query}")
-            
-            # ค้นหาเอกสาร
-            docs = await self.vector_store.asimilarity_search(
-                query,
-                k=settings.rag_top_k
+            # สร้าง Qdrant Client
+            self.qdrant_client = QdrantClient(
+                url=settings.qdrant_url,
+                timeout=10
             )
             
-            if not docs:
-                print("No documents found, using fallback")
-                return self._get_fallback_context()
-            
-            # รวมเอกสารเป็นข้อความเดียว
-            context_parts = []
-            for i, doc in enumerate(docs, 1):
-                context_parts.append(f"[เอกสารที่ {i}]\n{doc.page_content}\n")
-            
-            return "\n".join(context_parts)
-            
-        except Exception as e:
-            print(f"Error retrieving documents: {e}")
-            return self._get_fallback_context()
-    
-    def _get_fallback_context(self) -> str:
-        """
-        ข้อมูลสำรองกรณีที่ Vector DB ไม่พร้อม
-        """
-        return """
-        [ข้อมูลพื้นฐานเกี่ยวกับการลดภาษี]
-        
-        1. กองทุน RMF (Retirement Mutual Fund):
-           - ลดหย่อนได้สูงสุด 30% ของรายได้ ไม่เกิน 500,000 บาท
-           - ต้องถือจนอายุ 55 ปี และถือครบ 5 ปี
-           - ผลตอบแทนประมาณ 5-8% ต่อปี (ขึ้นกับตลาด)
-           - เหมาะกับคนที่ต้องการเก็บเงินระยะยาว
-        
-        2. กองทุน SSF (Super Savings Fund):
-           - ลดหย่อนได้สูงสุด 30% ของรายได้ ไม่เกิน 200,000 บาท
-           - ต้องถือครบ 10 ปี
-           - ผลตอบแทนประมาณ 4-7% ต่อปี
-           - มีความยืดหยุ่นมากกว่า RMF
-        
-        3. ประกันบำนาญ:
-           - ลดหย่อนได้สูงสุด 15% ของรายได้ ไม่เกิน 200,000 บาท
-           - รับประกันผลตอบแทน ความเสี่ยงต่ำ
-           - ผลตอบแทนประมาณ 3-4% ต่อปี
-           - เหมาะกับคนที่ไม่ชอบเสี่ยง
-        
-        4. กองทุนสำรองเลี้ยงชีพ (Provident Fund):
-           - ลดหย่อนได้สูงสุด 15% ของเงินเดือน ไม่เกิน 500,000 บาท
-           - บริษัทจ่ายเพิ่มให้ (Matching)
-           - ผลตอบแทนประมาณ 4-6% ต่อปี
-        
-        5. เงินบริจาค:
-           - ลดหย่อนได้สูงสุด 10% ของรายได้หลังหักค่าใช้จ่าย
-           - บริจาคให้การศึกษา/กีฬา ลดหย่อน 2 เท่า
-           - ไม่มีผลตอบแทนทางการเงิน แต่ได้บุญ
-        """
-    
-    def check_collection_exists(self) -> bool:
-        """
-        ตรวจสอบว่า Collection ใน Qdrant มีอยู่หรือไม่
-        """
-        try:
+            # ตรวจสอบว่า Collection มีอยู่หรือไม่
             collections = self.qdrant_client.get_collections()
             collection_names = [c.name for c in collections.collections]
-            return settings.qdrant_collection_name in collection_names
+            
+            print(f"📋 Available collections: {collection_names}")
+            
+            if settings.qdrant_collection_name not in collection_names:
+                print(f"❌ Collection '{settings.qdrant_collection_name}' not found!")
+                print(f"💡 Available collections: {collection_names}")
+                print(f"💡 Please check your QDRANT_COLLECTION_NAME in .env")
+                self.vector_store = None
+                return
+            
+            # สร้าง Vector Store
+            self.vector_store = QdrantVectorStore(
+                client=self.qdrant_client,
+                collection_name=settings.qdrant_collection_name,
+                embedding=self.embeddings
+            )
+            
+            print(f"✅ Qdrant Vector Store connected successfully!")
+            
         except Exception as e:
-            print(f"Error checking collection: {e}")
-            return False
+            print(f"❌ Failed to connect to Qdrant: {e}")
+            print(f"💡 Make sure Qdrant is running at: {settings.qdrant_url}")
+            print(f"💡 Start Qdrant: docker run -p 6333:6333 qdrant/qdrant")
+            traceback.print_exc()
+            self.vector_store = None
+            self.qdrant_client = None
+    
+    async def retrieve_relevant_documents(
+        self, 
+        query: str,
+        k: int = None
+    ) -> List:
+        """
+        ดึงเอกสารที่เกี่ยวข้องจาก Qdrant
+        
+        Args:
+            query: คำค้นหา
+            k: จำนวนเอกสารที่ต้องการ (ใช้ค่าจาก config ถ้าไม่ระบุ)
+            
+        Returns:
+            List ของเอกสาร
+        """
+        if self.vector_store is None:
+            print("⚠️ Qdrant Vector Store not available - returning empty list")
+            return []
+        
+        if k is None:
+            k = settings.rag_top_k
+        
+        try:
+            print(f"🔍 Searching Qdrant for: '{query[:50]}...' (top {k})")
+            
+            docs = self.vector_store.similarity_search(query, k=k)
+            
+            print(f"✅ Retrieved {len(docs)} documents from Qdrant")
+            
+            # แสดง snippet ของเอกสารที่ได้
+            for i, doc in enumerate(docs[:2]):  # แสดง 2 docs แรก
+                content_preview = doc.page_content[:100].replace('\n', ' ')
+                print(f"   Doc {i+1}: {content_preview}...")
+            
+            return docs
+            
+        except Exception as e:
+            print(f"❌ Qdrant retrieval error: {e}")
+            traceback.print_exc()
+            return []
+    
+    def is_available(self) -> bool:
+        """ตรวจสอบว่า Qdrant Vector Store พร้อมใช้งานหรือไม่"""
+        return self.vector_store is not None
+    
+    def get_collection_info(self) -> dict:
+        """ดึงข้อมูล Collection"""
+        if self.qdrant_client is None:
+            return {"status": "not_connected"}
+        
+        try:
+            collection = self.qdrant_client.get_collection(
+                collection_name=settings.qdrant_collection_name
+            )
+            return {
+                "status": "connected",
+                "name": settings.qdrant_collection_name,
+                "points_count": collection.points_count,
+                "vectors_count": collection.vectors_count
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e)
+            }

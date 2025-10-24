@@ -1,76 +1,96 @@
-# app/models.py
+"""
+Pydantic Models
+Version: Multiple Plans + Categorized Form
+"""
+
 from pydantic import BaseModel, Field
-from typing import List, Literal
+from typing import List, Optional
+
+
+# ===================================
+# Request Models (จัดหมวดหมู่แล้ว)
+# ===================================
 
 class TaxCalculationRequest(BaseModel):
-    """
-    ข้อมูลที่รับจาก Frontend
-    """
+    """ข้อมูลรายได้และค่าลดหย่อน (จัดหมวดหมู่)"""
+    
     # รายได้
-    salary: float = Field(ge=0, description="เงินเดือนรายปี")
-    bonus: float = Field(ge=0, description="โบนัสรายปี")
+    gross_income: int = Field(..., description="รายได้รวม", ge=0)
     
-    # ค่าลดหย่อนพื้นฐาน
-    personal_allowance: float = Field(default=60000, description="ค่าลดหย่อนส่วนตัว")
-    spouse_allowance: float = Field(default=0, description="ค่าลดหย่อนคู่สมรส")
-    child_allowance: float = Field(default=0, description="ค่าลดหย่อนบุตร")
-    social_security: float = Field(default=0, description="ประกันสังคม")
+    # กลุ่มลดหย่อนส่วนตัว/ครอบครัว
+    personal_deduction: int = Field(60000, description="ค่าลดหย่อนส่วนตัว", ge=0)
+    spouse_deduction: int = Field(0, description="ค่าลดหย่อนคู่สมรส (ไม่มีรายได้)", ge=0, le=60000)
+    child_deduction: int = Field(0, description="ค่าเลี้ยงดูบุตร (คนละ 30,000)", ge=0)
+    parent_support: int = Field(0, description="ค่าอุปการะเลี้ยงดูบิดามารดา (คนละ 30,000)", ge=0, le=60000)
+    disabled_support: int = Field(0, description="ค่าอุปการะคนพิการ/ทุพพลภาพ (คนละ 60,000)", ge=0)
     
-    # ค่าลดหย่อนจากการลงทุน
-    life_insurance: float = Field(default=0, description="ประกันชีวิต")
-    health_insurance: float = Field(default=0, description="ประกันสุขภาพ")
-    provident_fund: float = Field(default=0, description="กองทุนสำรองเลี้ยงชีพ")
-    rmf: float = Field(default=0, description="RMF")
-    ssf: float = Field(default=0, description="SSF")
-    pension_insurance: float = Field(default=0, description="ประกันบำนาญ")
-    donation: float = Field(default=0, description="เงินบริจาค")
+    # กลุ่มประกันชีวิตและการลงทุน
+    life_insurance: int = Field(0, description="เบี้ยประกันชีวิต", ge=0, le=100000)
+    life_insurance_parents: int = Field(0, description="เบี้ยประกันชีวิตบิดามารดา", ge=0, le=15000)
+    health_insurance: int = Field(0, description="เบี้ยประกันสุขภาพ", ge=0, le=25000)
+    health_insurance_parents: int = Field(0, description="เบี้ยประกันสุขภาพบิดามารดา", ge=0, le=15000)
+    pension_insurance: int = Field(0, description="เบี้ยประกันบำนาญ", ge=0)
+    provident_fund: int = Field(0, description="กองทุนสำรองเลี้ยงชีพ", ge=0)
+    gpf: int = Field(0, description="กองทุนบำเหน็จบำนาญข้าราชการ (กบข.)", ge=0)
+    pvd: int = Field(0, description="กองทุนสงเคราะห์ครูโรงเรียนเอกชน (กสศ.)", ge=0)
+    rmf: int = Field(0, description="RMF", ge=0)
+    ssf: int = Field(0, description="SSF", ge=0)
     
-    # ความเสี่ยง
-    risk_tolerance: Literal["low", "medium", "high"] = Field(
-        default="medium",
-        description="ระดับความเสี่ยงที่รับได้"
-    )
+    # กลุ่มกระตุ้นเศรษฐกิจ
+    shopping_deduction: int = Field(0, description="ช้อปช่วยชาติ", ge=0, le=30000)
+    otop_deduction: int = Field(0, description="ซื้อสินค้า OTOP", ge=0, le=50000)
+    travel_deduction: int = Field(0, description="ท่องเที่ยวในประเทศ", ge=0, le=30000)
+    
+    # กลุ่มเงินบริจาค
+    donation_general: int = Field(0, description="เงินบริจาคทั่วไป", ge=0)
+    donation_education: int = Field(0, description="เงินบริจาคเพื่อการศึกษา (2 เท่า)", ge=0)
+    donation_political: int = Field(0, description="บริจาคพรรคการเมือง", ge=0, le=10000)
+    
+    # ระดับความเสี่ยง
+    risk_tolerance: str = Field("medium", description="ระดับความเสี่ยง: low, medium, high")
 
+
+# ===================================
+# Response Models
+# ===================================
 
 class TaxCalculationResult(BaseModel):
-    """
-    ผลการคำนวณภาษี
-    """
-    gross_income: float = Field(description="รายได้รวม")
-    total_deductions: float = Field(description="ค่าลดหย่อนทั้งหมด")
-    taxable_income: float = Field(description="เงินได้สุทธิที่ต้องเสียภาษี")
-    tax_amount: float = Field(description="ภาษีที่ต้องจ่าย")
-    net_income: float = Field(description="รายได้สุทธิหลังหักภาษี")
-    effective_tax_rate: float = Field(description="อัตราภาษีเฉลี่ย (%)")
-    requires_optimization: bool = Field(
-        description="ควรใช้ RAG เพื่อหาวิธีลดภาษีหรือไม่"
-    )
+    """ผลการคำนวณภาษี"""
+    gross_income: int
+    taxable_income: int
+    tax_amount: int
+    effective_tax_rate: float
 
 
-class Recommendation(BaseModel):
-    """
-    คำแนะนำการลดภาษี 1 วิธี
-    """
-    strategy: str = Field(description="ชื่อกลยุทธ์")
-    description: str = Field(description="คำอธิบายวิธีการ")
-    investment_amount: float = Field(description="จำนวนเงินที่แนะนำให้ลงทุน")
-    tax_saving: float = Field(description="ภาษีที่ประหยัดได้")
-    risk_level: Literal["low", "medium", "high"] = Field(description="ระดับความเสี่ยง")
-    expected_return_1y: float = Field(description="ผลตอบแทนคาดการณ์ 1 ปี (%)")
-    expected_return_3y: float = Field(default=0, description="ผลตอบแทนคาดการณ์ 3 ปี (%)")
-    expected_return_5y: float = Field(default=0, description="ผลตอบแทนคาดการณ์ 5 ปี (%)")
-    pros: List[str] = Field(description="ข้อดี")
-    cons: List[str] = Field(description="ข้อเสีย")
+class AllocationItem(BaseModel):
+    """รายการการจัดสรรในแต่ละแผน"""
+    category: str = Field(..., description="ประเภทการลงทุน")
+    investment_amount: int = Field(..., description="จำนวนเงิน")
+    percentage: float = Field(..., description="สัดส่วน %")
+    tax_saving: int = Field(..., description="ภาษีที่ประหยัด")
+    risk_level: str = Field(..., description="ระดับความเสี่ยง")
+    pros: List[str] = Field(..., description="ข้อดี")
+    cons: List[str] = Field(..., description="ข้อเสีย")
 
 
-class TaxOptimizationResponse(BaseModel):
-    """
-    Response ที่ส่งกลับไปหา Frontend
-    """
-    current_tax: TaxCalculationResult = Field(description="ผลการคำนวณภาษีปัจจุบัน")
-    recommendations: List[Recommendation] = Field(description="คำแนะนำการลดภาษี")
-    summary: str = Field(description="สรุปคำแนะนำ")
-    disclaimer: str = Field(
-        default="⚠️ ข้อมูลนี้เป็นเพียงคำแนะนำเบื้องต้น กรุณาปรึกษาที่ปรึกษาทางการเงินมืออาชีพก่อนตัดสินใจลงทุน",
-        description="คำเตือน"
-    )
+class InvestmentPlan(BaseModel):
+    """แผนการลงทุนแต่ละแผน"""
+    plan_id: str = Field(..., description="รหัสแผน A, B, C")
+    plan_name: str = Field(..., description="ชื่อแผน")
+    plan_type: str = Field(..., description="ประเภทแผน: conservative, moderate, aggressive")
+    description: str = Field(..., description="คำอธิบายแผน")
+    total_investment: int = Field(..., description="เงินลงทุนรวม")
+    total_tax_saving: int = Field(..., description="ภาษีที่ประหยัดรวม")
+    overall_risk: str = Field(..., description="ความเสี่ยงโดยรวม")
+    allocations: List[AllocationItem] = Field(..., description="รายการการจัดสรร")
+
+
+class MultiplePlansResponse(BaseModel):
+    """Response ที่มีหลายแผนการลงทุน"""
+    plans: List[InvestmentPlan] = Field(..., description="แผนการลงทุนทั้งหมด")
+
+
+class TaxCalculationResponse(BaseModel):
+    """Response สำหรับ API"""
+    tax_result: TaxCalculationResult = Field(..., description="ผลการคำนวณภาษี")
+    investment_plans: MultiplePlansResponse = Field(..., description="แผนการลงทุนทั้งหมด")
