@@ -10,10 +10,10 @@ export default function Home() {
     
     // กลุ่มส่วนตัว/ครอบครัว
     personal_deduction: 60000, // ค่าคงที่ ไม่ให้แก้
-    spouse_deduction: 0,
-    child_deduction: 0,
-    parent_support: 0,
-    disabled_support: 0,
+    has_spouse: false, // มีคู่สมรสไม่มีรายได้หรือไม่
+    number_of_children: 0, // จำนวนบุตร
+    number_of_parents: 0, // จำนวนบิดามารดา
+    number_of_disabled: 0, // จำนวนคนพิการ/ทุพพลภาพ
     
     // กลุ่มประกันและการลงทุน
     life_insurance: 0,
@@ -45,12 +45,19 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
     
     if (name === 'risk_tolerance') {
       setFormData((prev) => ({
         ...prev,
         [name]: value,
+      }));
+    } else if (type === 'checkbox') {
+      // Handle checkbox
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData((prev) => ({
+        ...prev,
+        [name]: checked,
       }));
     } else {
       // ถ้าเป็นช่องตัวเลข
@@ -75,12 +82,86 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setResult(null);
 
     try {
+      // ✅ คำนวณเบื้องต้นว่าต้องจ่ายภาษีหรือไม่
+      // คำนวณค่าลดหย่อนตามจำนวนคนจริง (มีข้อจำกัด)
+      const spouse_deduction = formData.has_spouse ? 60000 : 0;
+      const child_deduction = Math.min(formData.number_of_children, 3) * 30000; // สูงสุด 3 คน
+      const parent_support = Math.min(formData.number_of_parents, 4) * 30000; // สูงสุด 4 คน (บิดา-มารดา 2 ฝ่าย)
+      const disabled_support = formData.number_of_disabled * 60000; // ไม่จำกัดจำนวน
+      
+      const totalDeductions = 
+        formData.personal_deduction +
+        spouse_deduction +
+        child_deduction +
+        parent_support +
+        disabled_support +
+        formData.life_insurance +
+        formData.life_insurance_parents +
+        formData.health_insurance +
+        formData.health_insurance_parents +
+        formData.pension_insurance +
+        formData.provident_fund +
+        formData.gpf +
+        formData.pvd +
+        formData.rmf +
+        formData.ssf +
+        formData.shopping_deduction +
+        formData.otop_deduction +
+        formData.travel_deduction +
+        formData.donation_general +
+        (formData.donation_education * 2) +
+        formData.donation_political;
+
+      const taxableIncome = Math.max(0, formData.gross_income - totalDeductions);
+      const requiresTax = taxableIncome > 150000; // เกินขั้นแรกที่ยกเว้นภาษี (0-150,000 บาท)
+
+      console.log('📊 Quick Tax Check:');
+      console.log(`   รายได้รวม: ${formData.gross_income.toLocaleString()} บาท`);
+      console.log(`   ค่าลดหย่อนรวม: ${totalDeductions.toLocaleString()} บาท`);
+      console.log(`   เงินได้สุทธิ: ${taxableIncome.toLocaleString()} บาท`);
+      console.log(`   ต้องจ่ายภาษี: ${requiresTax ? 'ใช่' : 'ไม่ต้อง'}`);
+
+      // ✅ ถ้าไม่ต้องจ่ายภาษี แสดงผลทันที ไม่ต้องเรียก API
+      if (!requiresTax) {
+        console.log('✅ ไม่ต้องจ่ายภาษี - ไม่เรียก API');
+        setResult({
+          tax_result: {
+            gross_income: formData.gross_income,
+            taxable_income: taxableIncome,
+            tax_amount: 0,
+            effective_tax_rate: 0
+          },
+          investment_plans: null,
+          no_tax_required: true
+        });
+        setLoading(false);
+        return;
+      }
+
+      // ✅ ถ้าต้องจ่ายภาษี เรียก API เพื่อคำนวณและรับคำแนะนำ
+      console.log('⏳ ต้องจ่ายภาษี - กำลังเรียก API...');
+      
+      // เตรียมข้อมูลส่ง API โดยแปลงเป็นค่าลดหย่อนที่คำนวณแล้ว
+      const apiPayload = {
+        ...formData,
+        spouse_deduction: spouse_deduction,
+        child_deduction: child_deduction,
+        parent_support: parent_support,
+        disabled_support: disabled_support,
+        // ลบ field ที่ไม่ต้องการ
+        has_spouse: undefined,
+        number_of_children: undefined,
+        number_of_parents: undefined,
+        number_of_disabled: undefined,
+      };
+      
       const response = await fetch('http://localhost:8000/api/calculate-tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(apiPayload),
       });
 
       if (!response.ok) {
@@ -88,10 +169,11 @@ export default function Home() {
       }
 
       const data = await response.json();
+      console.log('✅ API Response:', data);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
-      console.error('Error:', err);
+      console.error('❌ Error:', err);
     } finally {
       setLoading(false);
     }
@@ -143,7 +225,7 @@ export default function Home() {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* ค่าลดหย่อนส่วนตัว - DISABLED */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     ค่าลดหย่อนส่วนตัว (บาท)
                   </label>
@@ -159,64 +241,96 @@ export default function Home() {
                   </p>
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ค่าลดหย่อนคู่สมรส (บาท)
+                {/* คู่สมรส */}
+                <div className="md:col-span-2">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="has_spouse"
+                      checked={formData.has_spouse}
+                      onChange={handleInputChange}
+                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">
+                      มีคู่สมรสที่ไม่มีรายได้ (ลดหย่อน 60,000 บาท)
+                    </span>
                   </label>
-                  <input
-                    type="number"
-                    name="spouse_deduction"
-                    value={formData.spouse_deduction === 0 ? '' : formData.spouse_deduction}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">คู่สมรสไม่มีรายได้ 60,000 บาท</p>
                 </div>
 
+                {/* จำนวนบุตร */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ค่าเลี้ยงดูบุตร (บาท)
+                    จำนวนบุตร (คน)
                   </label>
                   <input
                     type="number"
-                    name="child_deduction"
-                    value={formData.child_deduction === 0 ? '' : formData.child_deduction}
+                    name="number_of_children"
+                    value={formData.number_of_children === 0 ? '' : formData.number_of_children}
                     onChange={handleInputChange}
                     placeholder="0"
+                    min="0"
+                    max="10"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">คนละ 30,000 บาท (สูงสุด 3 คน)</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    คนละ 30,000 บาท (สูงสุด 3 คน = 90,000 บาท)
+                  </p>
+                  {formData.number_of_children > 0 && (
+                    <p className="text-xs text-blue-600 font-semibold mt-1">
+                      = {(formData.number_of_children * 30000).toLocaleString()} บาท
+                      {formData.number_of_children > 3 && ' (เกิน 3 คนจะนับแค่ 90,000 บาท)'}
+                    </p>
+                  )}
                 </div>
 
+                {/* จำนวนบิดามารดา */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ค่าอุปการะบิดามารดา (บาท)
+                    จำนวนบิดามารดา (คน)
                   </label>
                   <input
                     type="number"
-                    name="parent_support"
-                    value={formData.parent_support === 0 ? '' : formData.parent_support}
+                    name="number_of_parents"
+                    value={formData.number_of_parents === 0 ? '' : formData.number_of_parents}
                     onChange={handleInputChange}
                     placeholder="0"
+                    min="0"
+                    max="4"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">คนละ 30,000 บาท (สูงสุด 2 คน)</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    คนละ 30,000 บาท (สูงสุด 4 คน = 120,000 บาท)
+                  </p>
+                  {formData.number_of_parents > 0 && (
+                    <p className="text-xs text-blue-600 font-semibold mt-1">
+                      = {(formData.number_of_parents * 30000).toLocaleString()} บาท
+                    </p>
+                  )}
                 </div>
 
+                {/* จำนวนคนพิการ */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ค่าอุปการะคนพิการ (บาท)
+                    จำนวนคนพิการ/ทุพพลภาพ (คน)
                   </label>
                   <input
                     type="number"
-                    name="disabled_support"
-                    value={formData.disabled_support === 0 ? '' : formData.disabled_support}
+                    name="number_of_disabled"
+                    value={formData.number_of_disabled === 0 ? '' : formData.number_of_disabled}
                     onChange={handleInputChange}
                     placeholder="0"
+                    min="0"
+                    max="10"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">คนละ 60,000 บาท</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    คนละ 60,000 บาท
+                  </p>
+                  {formData.number_of_disabled > 0 && (
+                    <p className="text-xs text-blue-600 font-semibold mt-1">
+                      = {(formData.number_of_disabled * 60000).toLocaleString()} บาท
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -530,14 +644,53 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Multiple Plans */}
-            <MultiplePlansView plans={result.investment_plans.plans} />
+            {/* ✅ กรณีไม่ต้องจ่ายภาษี */}
+            {result.no_tax_required && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl shadow-xl p-8 border-4 border-green-300">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">🎉</div>
+                  <h2 className="text-3xl font-bold text-green-800 mb-4">
+                    ยินดีด้วย! คุณไม่ต้องจ่ายภาษี
+                  </h2>
+                  <p className="text-lg text-gray-700 mb-6">
+                    เงินได้สุทธิของคุณอยู่ในเกณฑ์ยกเว้นภาษี (ไม่เกิน 150,000 บาท)
+                  </p>
+                  <div className="bg-white rounded-xl p-6 inline-block">
+                    <div className="grid grid-cols-2 gap-6 text-left">
+                      <div>
+                        <p className="text-sm text-gray-600">รายได้รวม:</p>
+                        <p className="text-xl font-bold text-gray-800">
+                          {result.tax_result.gross_income.toLocaleString()} บาท
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">เงินได้สุทธิ:</p>
+                        <p className="text-xl font-bold text-gray-800">
+                          {result.tax_result.taxable_income.toLocaleString()} บาท
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      💡 <strong>หมายเหตุ:</strong> หากต้องการวางแผนภาษีเพิ่มเติม 
+                      คุณสามารถเพิ่มรายได้หรือลดค่าลดหย่อนเพื่อดูแผนการลงทุนจาก AI
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ✅ กรณีต้องจ่ายภาษี - แสดงแผนการลงทุน */}
+            {!result.no_tax_required && result.investment_plans && (
+              <MultiplePlansView plans={result.investment_plans.plans} />
+            )}
           </div>
         )}
 
         {/* Footer */}
         <div className="text-center mt-12 text-gray-600">
-          <p>Powered by AI Tax Advisor | Version 3.0 Risk-Aware + Insurance Required</p>
+          <p>Powered by AI Tax Advisor | Version 3.1 with Smart Tax Check</p>
         </div>
       </div>
     </main>
