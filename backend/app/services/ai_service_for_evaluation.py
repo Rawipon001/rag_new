@@ -1,23 +1,21 @@
 """
-AI Service สำหรับ Evaluation เท่านั้น
-แยกออกจากระบบหลัก เพื่อแสดง raw response จาก OpenAI
+AI Service สำหรับ Evaluation - ปี 2568 (ฉบับสมบูรณ์)
+ใช้ Prompt เหมือนกับระบบหลักทุกประการ
+แยกออกจากระบบหลัก เพื่อแสดง raw response และทำ evaluation
 
-ไฟล์นี้จะถูกใช้โดย run_evaluation.py เท่านั้น
-ไม่กระทบกับ ai_service.py ในระบบหลัก
+จุดประสงค์:
+1. แสดง raw response จาก OpenAI เพื่อตรวจสอบคุณภาพ
+2. บันทึก logs สำหรับวิเคราะห์
+3. ทำ evaluation โดยไม่กระทบระบบหลัก
 """
 
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 import json
 import os
-from typing import Dict, List, Any
-
-# Import models จากระบบหลัก
-import sys
+from typing import Dict, List, Any, Tuple
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent.parent))
 
+# Import models และ config
 from app.models import TaxCalculationRequest, TaxCalculationResult
 from app.config import settings
 
@@ -26,22 +24,22 @@ class AIServiceForEvaluation:
     """
     AI Service แยกสำหรับ Evaluation
     
-    ความแตกต่างจาก ai_service.py ในระบบหลัก:
-    1. แสดง raw response จาก OpenAI
-    2. บันทึก raw response ลงไฟล์
-    3. แสดง prompt ที่ส่งไป
-    4. มี verbose logging เพื่อ debug
+    ความแตกต่างจากระบบหลัก:
+    - แสดง raw response
+    - บันทึก logs
+    - Verbose logging
+    - ไม่กระทบระบบหลัก
     """
     
     def __init__(self, verbose: bool = True, save_to_file: bool = True):
         """
         Args:
-            verbose: แสดงข้อความ debug หรือไม่
-            save_to_file: บันทึก raw response ลงไฟล์หรือไม่
+            verbose: แสดงข้อความ debug
+            save_to_file: บันทึก logs ลงไฟล์
         """
         self.llm = ChatOpenAI(
             model=settings.openai_model,
-            temperature=settings.openai_temperature,
+            temperature=0.3,  # ใช้ค่าเดียวกับระบบหลัก
             openai_api_key=settings.openai_api_key
         )
         self.verbose = verbose
@@ -51,6 +49,8 @@ class AIServiceForEvaluation:
         if self.save_to_file:
             self.log_dir = Path(__file__).parent.parent.parent / "evaluation_logs"
             self.log_dir.mkdir(exist_ok=True)
+            if self.verbose:
+                print(f"📂 Log directory: {self.log_dir}")
     
     def generate_tax_optimization_prompt(
         self, 
@@ -59,21 +59,34 @@ class AIServiceForEvaluation:
         retrieved_context: str
     ) -> str:
         """
-        สร้าง Prompt (เหมือนกับระบบหลัก หรือปรับแต่งได้)
+        สร้าง Prompt ที่เหมือนกับระบบหลักทุกประการ
         
-        **สามารถแก้ prompt ตรงนี้ได้เลย โดยไม่กระทบระบบหลัก**
+        🔥 CRITICAL: Prompt นี้ต้องเหมือนกับ ai_service.py ในระบบหลัก
         """
+        
         gross = tax_result.gross_income
+        taxable = tax_result.taxable_income
+        current_tax = tax_result.tax_amount
+        
+        # คำนวณวงเงินที่เหลือ - ปี 2568
         max_rmf = min(gross * 0.30, 500000)
-        max_ssf = min(gross * 0.30, 200000)
+        max_thai_esg = 300000  # ใหม่ปี 2568
+        max_thai_esgx_new = 300000  # ใหม่ปี 2568
+        max_thai_esgx_ltf = 300000  # ใหม่ปี 2568
         max_pension = min(gross * 0.15, 200000)
+        max_pvd = min(gross * 0.15, 500000)
         
         remaining_rmf = max_rmf - request.rmf
-        remaining_ssf = max_ssf - request.ssf
+        remaining_thai_esg = max_thai_esg - request.thai_esg
+        remaining_thai_esgx_new = max_thai_esgx_new - request.thai_esgx_new
+        remaining_thai_esgx_ltf = max_thai_esgx_ltf - request.thai_esgx_ltf
         remaining_pension = max_pension - request.pension_insurance
+        remaining_pvd = max_pvd - request.provident_fund
+        remaining_life = 100000 - request.life_insurance
+        remaining_life_pension = 10000 - request.life_insurance_pension
+        remaining_health = 25000 - request.health_insurance
         
-        # คำนวณอัตราภาษีส่วนเพิ่ม
-        taxable = tax_result.taxable_income
+        # อัตราภาษีส่วนเพิ่ม
         if taxable <= 150000:
             marginal_rate = 0
         elif taxable <= 300000:
@@ -91,69 +104,140 @@ class AIServiceForEvaluation:
         else:
             marginal_rate = 35
         
-        return f"""คุณเป็นที่ปรึกษาภาษีมืออาชีพในประเทศไทย ปี 2568
+        # ตรวจสอบว่ามีประกันหรือไม่
+        has_life_insurance = request.life_insurance > 0
+        has_health_insurance = request.health_insurance > 0
+        
+        # แปลงความเสี่ยง
+        risk_map = {
+            'low': 'ต่ำ',
+            'medium': 'กลาง',
+            'high': 'สูง'
+        }
+        risk_thai = risk_map.get(request.risk_tolerance, request.risk_tolerance)
+        risk_level = request.risk_tolerance
+        
+        # คำนวณเงินลงทุนที่แนะนำตามรายได้
+        if gross < 600000:
+            suggested_min = 60000
+            suggested_max = 150000
+        elif gross < 1000000:
+            suggested_min = 150000
+            suggested_max = 300000
+        elif gross < 1500000:
+            suggested_min = 300000
+            suggested_max = 500000
+        elif gross < 2000000:
+            suggested_min = 500000
+            suggested_max = 800000
+        elif gross < 3000000:
+            suggested_min = 800000
+            suggested_max = 1200000
+        else:
+            suggested_min = 1200000
+            suggested_max = 1800000
+        
+        potential_tax_saving = int(suggested_max * (marginal_rate / 100))
+        
+        # 🔥 PROMPT เหมือนกับระบบหลักทุกประการ
+        return f"""คุณเป็นที่ปรึกษาภาษีและการลงทุนมืออาชีพในประเทศไทย ปี 2568
 
-===========================================
-📊 สถานการณ์ของลูกค้า
-===========================================
-รายได้รวม: {tax_result.gross_income:,.0f} บาท
-เงินได้สุทธิ: {tax_result.taxable_income:,.0f} บาท
-ภาษีที่ต้องจ่าย: {tax_result.tax_amount:,.0f} บาท
-อัตราภาษีเฉลี่ย: {tax_result.effective_tax_rate}%
-อัตราภาษีส่วนเพิ่ม: {marginal_rate}%
-ระดับความเสี่ยง: {request.risk_tolerance}
+📊 สถานการณ์ของลูกค้า:
+- รายได้รวม: {gross:,.0f} บาท
+- เงินได้สุทธิ: {taxable:,.0f} บาท
+- ภาษีที่ต้องจ่ายตอนนี้: {current_tax:,.0f} บาท
+- อัตราภาษีส่วนเพิ่ม: {marginal_rate}%
+- ระดับความเสี่ยงที่ลูกค้าเลือก: {risk_thai}
 
-===========================================
-💰 ค่าลดหย่อนที่ใช้แล้ว
-===========================================
-RMF: {request.rmf:,.0f} / {max_rmf:,.0f} บาท (เหลือ {remaining_rmf:,.0f})
-SSF: {request.ssf:,.0f} / {max_ssf:,.0f} บาท (เหลือ {remaining_ssf:,.0f})
-ประกันบำนาญ: {request.pension_insurance:,.0f} / {max_pension:,.0f} บาท (เหลือ {remaining_pension:,.0f})
-ประกันชีวิต: {request.life_insurance:,.0f} / 100,000 บาท
-ประกันสุขภาพ: {request.health_insurance:,.0f} / 25,000 บาท
-กองทุน PVD: {request.provident_fund:,.0f} บาท
-เงินบริจาค: {request.donation:,.0f} บาท
+💰 วงเงินค่าลดหย่อนที่ยังใช้ไม่ครบ (ปี 2568):
+- RMF: เหลือ {remaining_rmf:,.0f} บาท (สูงสุด {max_rmf:,.0f})
+- ThaiESG: เหลือ {remaining_thai_esg:,.0f} บาท (สูงสุด {max_thai_esg:,.0f})
+- ThaiESGX (เงินใหม่): เหลือ {remaining_thai_esgx_new:,.0f} บาท (สูงสุด {max_thai_esgx_new:,.0f})
+- ThaiESGX (จาก LTF): เหลือ {remaining_thai_esgx_ltf:,.0f} บาท (สูงสุด {max_thai_esgx_ltf:,.0f})
+- กองทุนสำรองเลี้ยงชีพ: เหลือ {remaining_pvd:,.0f} บาท (สูงสุด {max_pvd:,.0f})
+- ประกันบำนาญ: เหลือ {remaining_pension:,.0f} บาท (สูงสุด {max_pension:,.0f})
+- ประกันชีวิต: เหลือ {remaining_life:,.0f} บาท
+- ประกันชีวิตแบบบำนาญ: เหลือ {remaining_life_pension:,.0f} บาท
+- ประกันสุขภาพ: เหลือ {remaining_health:,.0f} บาท
 
-===========================================
-📚 ข้อมูลจาก Knowledge Base
-===========================================
+🎯 เป้าหมายการลงทุนที่แนะนำสำหรับรายได้ระดับนี้:
+- เงินลงทุนแนะนำ: {suggested_min:,.0f} - {suggested_max:,.0f} บาท
+- ภาษีที่อาจประหยัดได้: ประมาณ {potential_tax_saving:,.0f} บาท
+
+🏥 สถานะประกัน:
+- ประกันชีวิต: {'มีแล้ว' if has_life_insurance else 'ยังไม่มี - ควรมี'}
+- ประกันสุขภาพ: {'มีแล้ว' if has_health_insurance else 'ยังไม่มี - ควรมี'}
+
+🆕 สิ่งที่เปลี่ยนแปลงในปี 2568:
+- ❌ SSF ยกเลิกแล้ว
+- ✅ ThaiESG/ThaiESGX มาแทน (วงเงิน 300,000 บาท ยกเว้น 30%)
+- ✅ Easy e-Receipt เพิ่มเป็น 50,000 บาท
+- ✅ ค่าอุปการะบิดามารดาเพิ่มเป็น 60,000 บาท/คน
+
+📚 ข้อมูลจาก Knowledge Base:
 {retrieved_context}
 
-===========================================
-🎯 คำสั่ง
-===========================================
-
-**วิธีคำนวณภาษีที่ประหยัดได้:**
-ภาษีที่ประหยัด = investment_amount × {marginal_rate}%
+🎯 ภารกิจ: สร้าง 3 แผนการลงทุนที่แตกต่างกัน
 
 **กฎสำคัญ:**
-1. แนะนำเฉพาะที่มีเหลือในวงเงิน
-2. คำนวณภาษีให้ถูกต้อง
-3. พิจารณาความเสี่ยงที่ลูกค้าต้องการ
-4. ใช้ข้อมูลจาก Knowledge Base เท่านั้น
+1. แต่ละแผนต้องมีเงินลงทุนรวมอยู่ในช่วง {suggested_min:,.0f} - {suggested_max:,.0f} บาท
+2. ทุกแผนต้องมีความเสี่ยงระดับ "{risk_level}"
+3. แผนที่ 1: เน้นประกัน + ความปลอดภัย (เงินลงทุนใกล้ minimum)
+4. แผนที่ 2: สมดุล กระจายความเสี่ยง (เงินลงทุนกลางๆ)
+5. แผนที่ 3: เน้นการเติบโต + ลดหย่อนสูงสุด (เงินลงทุนใกล้ maximum)
+{'6. ทุกแผนต้องมีประกันชีวิตอย่างน้อย 20,000 บาท' if not has_life_insurance else ''}
+{'7. ทุกแผนต้องมีประกันสุขภาพอย่างน้อย 15,000 บาท' if not has_health_insurance else ''}
+8. ควรใช้วงเงิน RMF ให้เต็มที่ (หรือใกล้เคียง) เพราะลดหย่อนได้สูง
+9. **ใช้ ThaiESG/ThaiESGX แทน SSF** (SSF ยกเลิกแล้วในปี 2568)
+10. สำหรับรายได้สูง (1,500,000+): ควรมีเงินบริจาคการศึกษา (นับ 2 เท่า)
 
-===========================================
-📝 รูปแบบการตอบ (JSON Array เท่านั้น)
-===========================================
+**โครงสร้าง JSON ที่ต้องการ:**
 
-ตอบเป็น JSON Array เท่านั้น ห้ามมีข้อความอื่น:
+```json
+{{
+  "plans": [
+    {{
+      "plan_id": "1",
+      "plan_name": "ทางเลือกที่ 1 - เน้นประกัน",
+      "plan_type": "{risk_level}",
+      "description": "เน้นความคุ้มครอง เงินลงทุนพอเหมาะ",
+      "total_investment": {suggested_min},
+      "total_tax_saving": {int(suggested_min * marginal_rate / 100)},
+      "overall_risk": "{risk_level}",
+      "allocations": [...]
+    }},
+    {{
+      "plan_id": "2",
+      "plan_name": "ทางเลือกที่ 2 - สมดุล",
+      "plan_type": "{risk_level}",
+      "description": "กระจายความเสี่ยง เน้น RMF + ThaiESG",
+      "total_investment": {int((suggested_min + suggested_max) / 2)},
+      "total_tax_saving": {int((suggested_min + suggested_max) / 2 * marginal_rate / 100)},
+      "overall_risk": "{risk_level}",
+      "allocations": [...]
+    }},
+    {{
+      "plan_id": "3",
+      "plan_name": "ทางเลือกที่ 3 - ลงทุนสูงสุด",
+      "plan_type": "{risk_level}",
+      "description": "เน้นลดหย่อนภาษีสูงสุด ใช้วงเงินเต็มที่",
+      "total_investment": {suggested_max},
+      "total_tax_saving": {int(suggested_max * marginal_rate / 100)},
+      "overall_risk": "{risk_level}",
+      "allocations": [...]
+    }}
+  ]
+}}
+```
 
-[
-  {{
-    "strategy": "ลงทุน RMF เพิ่ม 150,000 บาท (กองทุนผสม)",
-    "description": "ลงทุนในกองทุน RMF ประเภทผสม...",
-    "investment_amount": 150000,
-    "tax_saving": {int(150000 * marginal_rate / 100)},
-    "risk_level": "medium",
-    "expected_return_1y": 5.5,
-    "expected_return_3y": 6.8,
-    "expected_return_5y": 8.0,
-    "pros": ["ลดหย่อนภาษีได้สูง", "ผลตอบแทนดี"],
-    "cons": ["ต้องถือจนอายุ 55 ปี", "มีความเสี่ยง"]
-  }}
-]
+**หมายเหตุสำคัญ:**
+- แต่ละ allocation ต้องมีครบทุก field: category, investment_amount, percentage, tax_saving, risk_level, pros, cons
+- pros และ cons ต้องเป็น array ของ string (อย่างน้อย 2-3 รายการ)
+- percentage รวมทั้งหมดต้องเท่ากับ 100 (หรือใกล้เคียง 99-101)
+- tax_saving = investment_amount × (อัตราภาษีส่วนเพิ่ม / 100)
+- **อย่าใช้ SSF** เพราะยกเลิกแล้วในปี 2568 ใช้ ThaiESG/ThaiESGX แทน
 
-เริ่มตอบเลย:"""
+ตอบเป็น JSON เท่านั้น ห้ามมี markdown หรือข้อความอื่น:"""
     
     async def generate_recommendations(
         self,
@@ -161,12 +245,12 @@ SSF: {request.ssf:,.0f} / {max_ssf:,.0f} บาท (เหลือ {remaining_s
         tax_result: TaxCalculationResult,
         retrieved_context: str,
         test_case_id: int = 0
-    ) -> tuple[list[dict], str]:
+    ) -> Tuple[Dict[str, Any], str]:
         """
         เรียก OpenAI เพื่อสร้างคำแนะนำ
         
         Returns:
-            (recommendations, raw_response)
+            (parsed_result, raw_response)
         """
         try:
             # สร้าง Prompt
@@ -179,7 +263,7 @@ SSF: {request.ssf:,.0f} / {max_ssf:,.0f} บาท (เหลือ {remaining_s
                 print("\n" + "=" * 80)
                 print("📤 PROMPT SENT TO OPENAI:")
                 print("=" * 80)
-                print(prompt[:1000] + "...[truncated]" if len(prompt) > 1000 else prompt)
+                print(prompt[:1500] + "...[truncated]" if len(prompt) > 1500 else prompt)
                 print("=" * 80 + "\n")
             
             # บันทึก Prompt ลงไฟล์
@@ -202,7 +286,9 @@ SSF: {request.ssf:,.0f} / {max_ssf:,.0f} บาท (เหลือ {remaining_s
                 print("\n" + "=" * 80)
                 print("📥 RAW RESPONSE FROM OPENAI:")
                 print("=" * 80)
-                print(raw_response)
+                print(raw_response[:2000] if len(raw_response) > 2000 else raw_response)
+                if len(raw_response) > 2000:
+                    print(f"...[truncated, total {len(raw_response)} characters]")
                 print("=" * 80 + "\n")
             
             # บันทึก Raw Response ลงไฟล์
@@ -214,51 +300,54 @@ SSF: {request.ssf:,.0f} / {max_ssf:,.0f} บาท (เหลือ {remaining_s
                     print(f"💾 Saved raw response to: {response_file}\n")
             
             # Parse JSON
-            recommendations_text = raw_response.strip()
+            plans_text = raw_response.strip()
             
             # ลบ markdown code blocks ถ้ามี
-            if recommendations_text.startswith("```json"):
-                recommendations_text = recommendations_text[7:]
+            if plans_text.startswith("```json"):
+                plans_text = plans_text[7:]
                 if self.verbose:
                     print("🔧 Removed ```json prefix")
-            if recommendations_text.startswith("```"):
-                recommendations_text = recommendations_text[3:]
+            if plans_text.startswith("```"):
+                plans_text = plans_text[3:]
                 if self.verbose:
                     print("🔧 Removed ``` prefix")
-            if recommendations_text.endswith("```"):
-                recommendations_text = recommendations_text[:-3]
+            if plans_text.endswith("```"):
+                plans_text = plans_text[:-3]
                 if self.verbose:
                     print("🔧 Removed ``` suffix")
             
-            recommendations = json.loads(recommendations_text.strip())
+            plans_text = plans_text.strip()
+            result = json.loads(plans_text)
             
             # แสดง Parsed Result
             if self.verbose:
                 print("\n" + "=" * 80)
-                print("📊 PARSED RECOMMENDATIONS:")
+                print("📊 PARSED RESULT:")
                 print("=" * 80)
-                print(json.dumps(recommendations, indent=2, ensure_ascii=False))
+                print(json.dumps(result, indent=2, ensure_ascii=False)[:1500])
                 print("=" * 80 + "\n")
-                print(f"✅ Successfully parsed {len(recommendations)} recommendations\n")
+                print(f"✅ Successfully parsed {len(result.get('plans', []))} plans\n")
             
             # บันทึก Parsed Result ลงไฟล์
             if self.save_to_file:
-                parsed_file = self.log_dir / f"parsed_recommendations_test_case_{test_case_id}.json"
+                parsed_file = self.log_dir / f"parsed_result_test_case_{test_case_id}.json"
                 with open(parsed_file, 'w', encoding='utf-8') as f:
-                    json.dump(recommendations, f, indent=2, ensure_ascii=False)
+                    json.dump(result, f, indent=2, ensure_ascii=False)
                 if self.verbose:
-                    print(f"💾 Saved parsed recommendations to: {parsed_file}\n")
+                    print(f"💾 Saved parsed result to: {parsed_file}\n")
             
-            return recommendations, raw_response
+            # Validate
+            self._validate_response(result)
+            
+            return result, raw_response
             
         except json.JSONDecodeError as e:
             print(f"\n❌ JSON Parse Error: {e}")
             print(f"\n📄 Raw Response was:")
             print("=" * 80)
-            print(raw_response)
+            print(raw_response[:1000])
             print("=" * 80)
             
-            # บันทึก error
             if self.save_to_file:
                 error_file = self.log_dir / f"error_test_case_{test_case_id}.txt"
                 with open(error_file, 'w', encoding='utf-8') as f:
@@ -267,15 +356,13 @@ SSF: {request.ssf:,.0f} / {max_ssf:,.0f} บาท (เหลือ {remaining_s
                     f.write(raw_response)
                 print(f"\n💾 Saved error to: {error_file}\n")
             
-            # Return fallback
-            return self._get_fallback_recommendations(request, tax_result), raw_response
+            return self._get_fallback_response(request, tax_result), raw_response
             
         except Exception as e:
-            print(f"\n❌ AI Service Error: {e}")
+            print(f"\n❌ Error: {e}")
             import traceback
             traceback.print_exc()
             
-            # บันทึก error
             if self.save_to_file:
                 error_file = self.log_dir / f"error_test_case_{test_case_id}.txt"
                 with open(error_file, 'w', encoding='utf-8') as f:
@@ -283,95 +370,120 @@ SSF: {request.ssf:,.0f} / {max_ssf:,.0f} บาท (เหลือ {remaining_s
                     f.write(traceback.format_exc())
                 print(f"\n💾 Saved error to: {error_file}\n")
             
-            return self._get_fallback_recommendations(request, tax_result), ""
+            return self._get_fallback_response(request, tax_result), ""
     
-    def _get_fallback_recommendations(
+    def _validate_response(self, result: Dict[str, Any]):
+        """
+        ตรวจสอบความถูกต้องของ response
+        """
+        if "plans" not in result:
+            raise ValueError("Missing 'plans' key in response")
+        
+        if len(result["plans"]) != 3:
+            raise ValueError(f"Expected 3 plans, got {len(result['plans'])}")
+        
+        required_plan_fields = ["plan_id", "plan_name", "plan_type", "description", 
+                               "total_investment", "total_tax_saving", "overall_risk", "allocations"]
+        required_alloc_fields = ["category", "investment_amount", "percentage", 
+                                "tax_saving", "risk_level", "pros", "cons"]
+        
+        for i, plan in enumerate(result["plans"]):
+            for field in required_plan_fields:
+                if field not in plan:
+                    raise ValueError(f"Plan {i+1} missing field: {field}")
+            
+            if not plan["allocations"]:
+                raise ValueError(f"Plan {i+1} has empty allocations")
+            
+            for j, alloc in enumerate(plan["allocations"]):
+                for field in required_alloc_fields:
+                    if field not in alloc:
+                        raise ValueError(f"Plan {i+1}, Allocation {j+1} missing field: {field}")
+        
+        if self.verbose:
+            print("✅ Response validation passed")
+    
+    def _get_fallback_response(
         self,
         request: TaxCalculationRequest,
         tax_result: TaxCalculationResult
-    ) -> list[dict]:
+    ) -> Dict[str, Any]:
         """
-        คำแนะนำสำรองกรณี AI ล้มเหลว
+        คำตอบสำรองกรณี AI ล้มเหลว
         """
         if self.verbose:
-            print("\n⚠️  Using fallback recommendations...\n")
+            print("\n⚠️  Using fallback response...\n")
         
         gross = tax_result.gross_income
-        max_rmf = min(gross * 0.30, 500000)
-        remaining_rmf = max_rmf - request.rmf
+        risk = request.risk_tolerance
         
-        marginal_rate = 20  # ประมาณ
+        # คำนวณเงินลงทุนแนะนำ
+        if gross < 1000000:
+            base_investment = 150000
+        elif gross < 2000000:
+            base_investment = 500000
+        else:
+            base_investment = 1000000
         
-        recommendations = []
-        
-        if remaining_rmf > 0:
-            amount = min(remaining_rmf, 100000)
-            recommendations.append({
-                "strategy": f"ลงทุน RMF เพิ่ม {amount:,.0f} บาท",
-                "description": "คำแนะนำสำรอง: ลงทุนในกองทุน RMF",
-                "investment_amount": amount,
-                "tax_saving": int(amount * marginal_rate / 100),
-                "risk_level": "medium",
-                "expected_return_1y": 5.0,
-                "expected_return_3y": 6.5,
-                "expected_return_5y": 8.0,
-                "pros": ["ลดหย่อนภาษี", "ผลตอบแทนดี"],
-                "cons": ["ต้องถือจนอายุ 55 ปี"]
-            })
-        
-        return recommendations
-
-
-# ==========================================
-# ตัวอย่างการใช้งาน
-# ==========================================
-
-if __name__ == "__main__":
-    import asyncio
-    from app.services.tax_service import TaxService
-    
-    print("🧪 Testing AIServiceForEvaluation\n")
-    
-    # สร้าง service
-    ai_service = AIServiceForEvaluation(verbose=True, save_to_file=True)
-    tax_service = TaxService()
-    
-    # สร้าง test request
-    request = TaxCalculationRequest(
-        gross_income=600000,
-        personal_deduction=60000,
-        life_insurance=50000,
-        health_insurance=15000,
-        provident_fund=50000,
-        rmf=0,
-        ssf=0,
-        pension_insurance=0,
-        donation=0,
-        risk_tolerance="medium"
-    )
-    
-    # คำนวณภาษี
-    tax_result = tax_service.calculate_tax(request)
-    
-    # Mock context
-    context = """
-    RMF สามารถลดหย่อนภาษีได้สูงสุด 30% ของรายได้
-    ต้องถือจนอายุ 55 ปี
-    ผลตอบแทนประมาณ 5-8% ต่อปี
-    """
-    
-    # เรียก AI
-    async def test():
-        recommendations, raw_response = await ai_service.generate_recommendations(
-            request, tax_result, context, test_case_id=999
-        )
-        
-        print("\n" + "=" * 80)
-        print("✅ TEST COMPLETED!")
-        print("=" * 80)
-        print(f"📊 Got {len(recommendations)} recommendations")
-        print(f"📝 Raw response length: {len(raw_response)} characters")
-        print(f"💾 Files saved to: {ai_service.log_dir}")
-        print("=" * 80 + "\n")
-    
-    asyncio.run(test())
+        return {
+            "plans": [
+                {
+                    "plan_id": "1",
+                    "plan_name": "ทางเลือกที่ 1 - เน้นประกัน (Fallback)",
+                    "plan_type": risk,
+                    "description": "แผนสำรอง - เน้นความคุ้มครอง",
+                    "total_investment": base_investment,
+                    "total_tax_saving": int(base_investment * 0.25),
+                    "overall_risk": risk,
+                    "allocations": [
+                        {
+                            "category": "ประกันชีวิต",
+                            "investment_amount": int(base_investment * 0.25),
+                            "percentage": 25,
+                            "tax_saving": int(base_investment * 0.0625),
+                            "risk_level": "low",
+                            "pros": ["มีความคุ้มครอง", "จำเป็น"],
+                            "cons": ["ผลตอบแทนต่ำ"]
+                        },
+                        {
+                            "category": "RMF",
+                            "investment_amount": int(base_investment * 0.50),
+                            "percentage": 50,
+                            "tax_saving": int(base_investment * 0.125),
+                            "risk_level": risk,
+                            "pros": ["ลดหย่อนภาษีสูง", "ผลตอบแทนดี"],
+                            "cons": ["ต้องถือ 5 ปี"]
+                        },
+                        {
+                            "category": "ประกันบำนาญ",
+                            "investment_amount": int(base_investment * 0.25),
+                            "percentage": 25,
+                            "tax_saving": int(base_investment * 0.0625),
+                            "risk_level": "low",
+                            "pros": ["รับประกันผลตอบแทน"],
+                            "cons": ["ผูกพันยาว"]
+                        }
+                    ]
+                },
+                {
+                    "plan_id": "2",
+                    "plan_name": "ทางเลือกที่ 2 - สมดุล (Fallback)",
+                    "plan_type": risk,
+                    "description": "แผนสำรอง - กระจายความเสี่ยง",
+                    "total_investment": int(base_investment * 1.3),
+                    "total_tax_saving": int(base_investment * 1.3 * 0.25),
+                    "overall_risk": risk,
+                    "allocations": []  # Simplified
+                },
+                {
+                    "plan_id": "3",
+                    "plan_name": "ทางเลือกที่ 3 - ลงทุนสูงสุด (Fallback)",
+                    "plan_type": risk,
+                    "description": "แผนสำรอง - ใช้วงเงินเต็มที่",
+                    "total_investment": int(base_investment * 1.6),
+                    "total_tax_saving": int(base_investment * 1.6 * 0.25),
+                    "overall_risk": risk,
+                    "allocations": []  # Simplified
+                }
+            ]
+        }
