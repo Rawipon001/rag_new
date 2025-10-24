@@ -1,629 +1,507 @@
 'use client';
 
-import { useState } from 'react';
-import { Calculator, TrendingUp, Shield, Wallet, Gift, PiggyBank, Info } from 'lucide-react';
-import {
-  SimplifiedFormData,
-  TaxOptimizationResponse,
-  convertToApiRequest
-} from '@/lib/types';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import React, { useState } from 'react';
+import MultiplePlansView from './components/MultiplePlansView';
 
 export default function Home() {
-  const [formData, setFormData] = useState<SimplifiedFormData>({
+  const [formData, setFormData] = useState({
     // รายได้
-    salary: 0,
-    bonus: 0,
+    gross_income: 600000,
     
-    // ครอบครัว
-    hasSpouse: false,
-    numberOfChildren: 0,
+    // กลุ่มส่วนตัว/ครอบครัว
+    personal_deduction: 60000, // ค่าคงที่ ไม่ให้แก้
+    spouse_deduction: 0,
+    child_deduction: 0,
+    parent_support: 0,
+    disabled_support: 0,
     
-    // ประกันสังคม
-    hasSocialSecurity: false,
-    socialSecurityAmount: 0,
+    // กลุ่มประกันและการลงทุน
+    life_insurance: 0,
+    life_insurance_parents: 0,
+    health_insurance: 0,
+    health_insurance_parents: 0,
+    pension_insurance: 0,
+    provident_fund: 0,
+    gpf: 0,
+    pvd: 0,
+    rmf: 0,
+    ssf: 0,
     
-    // ประกัน
-    hasLifeInsurance: false,
-    lifeInsuranceAmount: 0,
-    hasHealthInsurance: false,
-    healthInsuranceAmount: 0,
-    hasPensionInsurance: false,
-    pensionInsuranceAmount: 0,
+    // กลุ่มกระตุ้นเศรษฐกิจ
+    shopping_deduction: 0,
+    otop_deduction: 0,
+    travel_deduction: 0,
     
-    // Easy e-Receipt
-    easyEReceiptAmount: 0,
+    // กลุ่มเงินบริจาค
+    donation_general: 0,
+    donation_education: 0,
+    donation_political: 0,
     
-    // เงินบริจาค
-    donationAmount: 0,
-    
-    // การลงทุน
-    hasProvidentFund: false,
-    providentFundAmount: 0,
-    hasRMF: false,
-    rmfAmount: 0,
-    hasSSF: false,
-    ssfAmount: 0,
-    
-    risk_tolerance: 'medium'
+    risk_tolerance: 'medium',
   });
 
-  const [result, setResult] = useState<TaxOptimizationResponse | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'risk_tolerance' ? value : parseInt(value) || 0,
+    }));
+  };
+
+  const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-  
-    // แปลง SimplifiedFormData เป็น TaxCalculationRequest
-    const apiRequest = convertToApiRequest(formData);
-    console.log("📤 Sending request:", apiRequest);
-  
+
     try {
-      const response = await fetch('http://localhost:8000/api/calculate', {
+      const response = await fetch('http://localhost:8000/api/calculate-tax', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(apiRequest)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
-        throw new Error('เกิดข้อผิดพลาดในการคำนวณ');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: TaxOptimizationResponse = await response.json();
+      const data = await response.json();
       setResult(data);
     } catch (err) {
-      console.error("❌ Error:", err);
       setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
+      console.error('Error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('th-TH', {
-      style: 'currency',
-      currency: 'THB',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-
-  const chartData = result ? [
-    { name: 'ภาษีที่จ่าย', value: result.current_tax.tax_amount, color: '#ef4444' },
-    { name: 'รายได้สุทธิ', value: result.current_tax.net_income, color: '#22c55e' }
-  ] : [];
-
-  const returnChartData = result?.recommendations.map(rec => ({
-    name: rec.strategy.substring(0, 20) + '...',
-    '1 ปี': rec.expected_return_1y || 0,
-    '3 ปี': rec.expected_return_3y || 0,
-    '5 ปี': rec.expected_return_5y || 0,
-  })) || [];
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-3">
-            <Calculator className="w-8 h-8 text-blue-600" />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">AI Tax Advisor</h1>
-              <p className="text-sm text-gray-600">ผู้ช่วยวางแผนภาษีอัจฉริยะ - ปี 2568</p>
-            </div>
-          </div>
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-800 mb-4">
+            🏦 AI Tax Advisor
+          </h1>
+          <p className="text-lg text-gray-600">
+            ระบบแนะนำการวางแผนภาษี - ได้หลายแผนการลงทุนพร้อมเปรียบเทียบ
+          </p>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Form Section */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">กรอกข้อมูลรายได้และค่าลดหย่อน</h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* 1. รายได้ */}
-              <div className="space-y-4 p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
-                <h3 className="text-lg font-bold text-orange-800 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  รายได้
-                </h3>
-                
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    เงินเดือนรายปี (บาท)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.salary || ''}
-                    onChange={(e) => setFormData({...formData, salary: parseFloat(e.target.value) || 0})}
-                    placeholder="เช่น 600,000"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
+        {/* Form */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            📝 กรอกข้อมูลรายได้และค่าลดหย่อน
+          </h2>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    โบนัสและรายได้อื่นๆ รายปี (บาท)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.bonus || ''}
-                    onChange={(e) => setFormData({...formData, bonus: parseFloat(e.target.value) || 0})}
-                    placeholder="เช่น 100,000"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-              </div>
-
-              {/* 2. ค่าลดหย่อนส่วนตัว/ครอบครัว */}
-              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                <h3 className="text-lg font-bold text-blue-800 flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  กลุ่มลดหย่อนส่วนตัว/ครอบครัว
-                </h3>
-
-                {/* ส่วนตัว - แสดงอัตโนมัติ */}
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-blue-900">ค่าลดหย่อนส่วนตัว</span>
-                    <span className="text-lg font-bold text-blue-900">60,000 บาท</span>
-                  </div>
-                  <p className="text-xs text-blue-700 mt-1">✓ คำนวณให้อัตโนมัติ</p>
-                </div>
-
-                {/* คู่สมรส */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasSpouse}
-                      onChange={(e) => setFormData({...formData, hasSpouse: e.target.checked})}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      มีคู่สมรส (ไม่มีรายได้)
-                      {formData.hasSpouse && <span className="ml-2 text-blue-600 font-bold">+60,000 บาท</span>}
-                    </span>
-                  </label>
-                </div>
-
-                {/* บุตร */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    จำนวนบุตร (คน)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={formData.numberOfChildren}
-                    onChange={(e) => setFormData({...formData, numberOfChildren: parseInt(e.target.value) || 0})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  {formData.numberOfChildren > 0 && (
-                    <p className="text-sm text-blue-600">
-                      ลดหย่อน: <span className="font-bold">{formatCurrency(formData.numberOfChildren * 30000)}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* ประกันสังคม */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasSocialSecurity}
-                      onChange={(e) => setFormData({...formData, hasSocialSecurity: e.target.checked})}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">จ่ายประกันสังคม</span>
-                  </label>
-                  {formData.hasSocialSecurity && (
-                    <input
-                      type="number"
-                      value={formData.socialSecurityAmount || ''}
-                      onChange={(e) => setFormData({...formData, socialSecurityAmount: parseFloat(e.target.value) || 0})}
-                      placeholder="จำนวนเงิน (สูงสุด 9,000)"
-                      max="9000"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* 3. กลุ่มประกันชีวิตและสุขภาพ */}
-              <div className="space-y-4 p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                <h3 className="text-lg font-bold text-green-800 flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  กลุ่มประกันชีวิตและการลงทุน
-                </h3>
-
-                {/* ประกันชีวิต */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasLifeInsurance}
-                      onChange={(e) => setFormData({...formData, hasLifeInsurance: e.target.checked})}
-                      className="w-5 h-5 text-green-600 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">ประกันชีวิต</span>
-                  </label>
-                  {formData.hasLifeInsurance && (
-                    <div>
-                      <input
-                        type="number"
-                        value={formData.lifeInsuranceAmount || ''}
-                        onChange={(e) => setFormData({...formData, lifeInsuranceAmount: parseFloat(e.target.value) || 0})}
-                        placeholder="จำนวนเงิน (สูงสุด 100,000)"
-                        max="100000"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <p className="text-xs text-green-600 mt-1">ลดหย่อนได้สูงสุด 100,000 บาท</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* ประกันสุขภาพ */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasHealthInsurance}
-                      onChange={(e) => setFormData({...formData, hasHealthInsurance: e.target.checked})}
-                      className="w-5 h-5 text-green-600 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">ประกันสุขภาพ</span>
-                  </label>
-                  {formData.hasHealthInsurance && (
-                    <div>
-                      <input
-                        type="number"
-                        value={formData.healthInsuranceAmount || ''}
-                        onChange={(e) => setFormData({...formData, healthInsuranceAmount: parseFloat(e.target.value) || 0})}
-                        placeholder="จำนวนเงิน (สูงสุด 25,000)"
-                        max="25000"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <p className="text-xs text-green-600 mt-1">ลดหย่อนได้สูงสุด 25,000 บาท</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* ประกันบำนาญ */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasPensionInsurance}
-                      onChange={(e) => setFormData({...formData, hasPensionInsurance: e.target.checked})}
-                      className="w-5 h-5 text-green-600 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">ประกันบำนาญ</span>
-                  </label>
-                  {formData.hasPensionInsurance && (
-                    <div>
-                      <input
-                        type="number"
-                        value={formData.pensionInsuranceAmount || ''}
-                        onChange={(e) => setFormData({...formData, pensionInsuranceAmount: parseFloat(e.target.value) || 0})}
-                        placeholder="จำนวนเงิน (สูงสุด 15% หรือ 200,000)"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <p className="text-xs text-green-600 mt-1">ลดหย่อนได้สูงสุด 15% ของรายได้ หรือ 200,000 บาท</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 4. กลุ่มการลงทุนระยะยาว */}
-              <div className="space-y-4 p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
-                <h3 className="text-lg font-bold text-purple-800 flex items-center gap-2">
-                  <PiggyBank className="w-5 h-5" />
-                  กลุ่มการลงทุน
-                </h3>
-
-                {/* กองทุนสำรองเลี้ยงชีพ */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasProvidentFund}
-                      onChange={(e) => setFormData({...formData, hasProvidentFund: e.target.checked})}
-                      className="w-5 h-5 text-purple-600 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">กองทุนสำรองเลี้ยงชีพ (PVD)</span>
-                  </label>
-                  {formData.hasProvidentFund && (
-                    <div>
-                      <input
-                        type="number"
-                        value={formData.providentFundAmount || ''}
-                        onChange={(e) => setFormData({...formData, providentFundAmount: parseFloat(e.target.value) || 0})}
-                        placeholder="ลงทุนไปเท่าไหร่ต่อปี"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <p className="text-xs text-purple-600 mt-1">ลดหย่อนได้สูงสุด 15% ของเงินเดือน หรือ 500,000 บาท</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* RMF */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasRMF}
-                      onChange={(e) => setFormData({...formData, hasRMF: e.target.checked})}
-                      className="w-5 h-5 text-purple-600 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">กองทุน RMF</span>
-                  </label>
-                  {formData.hasRMF && (
-                    <div>
-                      <input
-                        type="number"
-                        value={formData.rmfAmount || ''}
-                        onChange={(e) => setFormData({...formData, rmfAmount: parseFloat(e.target.value) || 0})}
-                        placeholder="ลงทุนไปเท่าไหร่ต่อปี"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <p className="text-xs text-purple-600 mt-1">ลดหย่อนได้สูงสุด 30% ของรายได้ หรือ 500,000 บาท</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* SSF */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasSSF}
-                      onChange={(e) => setFormData({...formData, hasSSF: e.target.checked})}
-                      className="w-5 h-5 text-purple-600 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">กองทุน SSF</span>
-                  </label>
-                  {formData.hasSSF && (
-                    <div>
-                      <input
-                        type="number"
-                        value={formData.ssfAmount || ''}
-                        onChange={(e) => setFormData({...formData, ssfAmount: parseFloat(e.target.value) || 0})}
-                        placeholder="ลงทุนไปเท่าไหร่ต่อปี"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <p className="text-xs text-purple-600 mt-1">ลดหย่อนได้สูงสุด 30% ของรายได้ หรือ 200,000 บาท</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 5. กลุ่มเงินบริจาค */}
-              <div className="space-y-4 p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
-                <h3 className="text-lg font-bold text-yellow-800 flex items-center gap-2">
-                  <Gift className="w-5 h-5" />
-                  กลุ่มเงินบริจาค
-                </h3>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    เงินบริจาค (บาท)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.donationAmount || ''}
-                    onChange={(e) => setFormData({...formData, donationAmount: parseFloat(e.target.value) || 0})}
-                    placeholder="บริจาคไปเท่าไหร่ต่อปี"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                  />
-                  <p className="text-xs text-yellow-700">ลดหย่อนได้สูงสุด 10% ของรายได้หลังหักค่าใช้จ่าย</p>
-                </div>
-              </div>
-
-              {/* ระดับความเสี่ยง */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  ระดับความเสี่ยงที่รับได้
+          <form onSubmit={handleCalculate} className="space-y-8">
+            {/* รายได้ */}
+            <div className="bg-orange-50 rounded-xl p-6 border-2 border-orange-200">
+              <h3 className="text-xl font-bold text-orange-800 mb-4">รายได้</h3>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  รายได้รวมต่อปี (บาท) *
                 </label>
-                <select
-                  key={`risk-${formData.risk_tolerance}`}
-                  value={formData.risk_tolerance}
-                  onChange={(e) => setFormData({...formData, risk_tolerance: e.target.value as 'low' | 'medium' | 'high'})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="low">ต่ำ - ต้องการความปลอดภัย</option>
-                  <option value="medium">กลาง - สมดุลระหว่างความเสี่ยงและผลตอบแทน</option>
-                  <option value="high">สูง - ต้องการผลตอบแทนสูง</option>
-                </select>
+                <input
+                  type="number"
+                  name="gross_income"
+                  value={formData.gross_income}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:outline-none"
+                  required
+                />
               </div>
+            </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-lg transition-all disabled:bg-gray-400 disabled:cursor-not-allowed shadow-lg"
-              >
-                {loading ? '🔄 กำลังคำนวณ...' : '🚀 คำนวณภาษีและแนะนำ'}
-              </button>
-            </form>
-          </div>
-
-          {/* Results Section */}
-          <div className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800">{error}</p>
-              </div>
-            )}
-            
-            {result && (
-              <>
-                {/* Tax Summary */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">💰 สรุปภาษี</h2>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center pb-2 border-b">
-                      <span className="text-gray-600">รายได้รวม</span>
-                      <span className="font-semibold">{formatCurrency(result.current_tax.gross_income)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2 border-b">
-                      <span className="text-gray-600">ค่าลดหย่อนทั้งหมด</span>
-                      <span className="font-semibold text-green-600">-{formatCurrency(result.current_tax.total_deductions)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2 border-b">
-                      <span className="text-gray-600">เงินได้สุทธิ</span>
-                      <span className="font-semibold">{formatCurrency(result.current_tax.taxable_income)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2 border-b border-red-200 bg-red-50 p-3 rounded-lg">
-                      <span className="text-red-600 font-semibold">ภาษีที่ต้องจ่าย</span>
-                      <span className="text-2xl font-bold text-red-600">{formatCurrency(result.current_tax.tax_amount)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">อัตราภาษีเฉลี่ย</span>
-                      <span className="font-semibold text-blue-600">{result.current_tax.effective_tax_rate}%</span>
-                    </div>
-                  </div>
-
-                  {/* Pie Chart */}
-                  {chartData.length > 0 && (
-                    <div className="mt-6 h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={chartData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {chartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
+            {/* กลุ่มลดหย่อนส่วนตัว/ครอบครัว */}
+            <div className="bg-blue-50 rounded-xl p-6 border-2 border-blue-200">
+              <h3 className="text-xl font-bold text-blue-800 mb-4">
+                👨‍👩‍👧‍👦 กลุ่มลดหย่อนส่วนตัว/ครอบครัว
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* ค่าลดหย่อนส่วนตัว - DISABLED */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ค่าลดหย่อนส่วนตัว (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="personal_deduction"
+                    value={formData.personal_deduction}
+                    disabled
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    ⚠️ ค่าคงที่ 60,000 บาท (ไม่สามารถแก้ไขได้)
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ค่าลดหย่อนคู่สมรส (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="spouse_deduction"
+                    value={formData.spouse_deduction}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">คู่สมรสไม่มีรายได้ 60,000 บาท</p>
                 </div>
 
-                {/* AI Recommendations */}
-                {result.recommendations.length > 0 && (
-                  <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">💡 คำแนะนำจาก AI</h2>
-                    
-                    <div className="bg-blue-50 rounded-lg p-4 mb-6">
-                      <p className="text-gray-700 whitespace-pre-line">{result.summary}</p>
-                    </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ค่าเลี้ยงดูบุตร (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="child_deduction"
+                    value={formData.child_deduction}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">คนละ 30,000 บาท (สูงสุด 3 คน)</p>
+                </div>
 
-                    {/* กราฟผลตอบแทน */}
-                    {returnChartData.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">📈 ผลตอบแทนคาดการณ์</h3>
-                        <div className="h-80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={returnChartData}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis 
-                                dataKey="name" 
-                                angle={-45}
-                                textAnchor="end"
-                                height={100}
-                                fontSize={12}
-                              />
-                              <YAxis 
-                                label={{ value: 'ผลตอบแทน (%)', angle: -90, position: 'insideLeft' }}
-                              />
-                              <Tooltip />
-                              <Legend />
-                              <Bar dataKey="1 ปี" fill="#3b82f6" />
-                              <Bar dataKey="3 ปี" fill="#10b981" />
-                              <Bar dataKey="5 ปี" fill="#f59e0b" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    )}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ค่าอุปการะบิดามารดา (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="parent_support"
+                    value={formData.parent_support}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">คนละ 30,000 บาท (สูงสุด 2 คน)</p>
+                </div>
 
-                    <div className="space-y-4">
-                      {result.recommendations.map((rec, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-start justify-between mb-3">
-                            <h3 className="text-lg font-semibold text-gray-900">{rec.strategy}</h3>
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              rec.risk_level === 'low' ? 'bg-green-100 text-green-800' :
-                              rec.risk_level === 'high' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {rec.risk_level === 'low' ? 'ความเสี่ยงต่ำ' :
-                               rec.risk_level === 'high' ? 'ความเสี่ยงสูง' : 'ความเสี่ยงกลาง'}
-                            </span>
-                          </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ค่าอุปการะคนพิการ (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="disabled_support"
+                    value={formData.disabled_support}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">คนละ 60,000 บาท</p>
+                </div>
+              </div>
+            </div>
 
-                          <p className="text-gray-600 mb-4">{rec.description}</p>
+            {/* กลุ่มประกันชีวิตและการลงทุน */}
+            <div className="bg-green-50 rounded-xl p-6 border-2 border-green-200">
+              <h3 className="text-xl font-bold text-green-800 mb-4">
+                🏦 กลุ่มประกันชีวิตและการลงทุน
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    เบี้ยประกันชีวิต (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="life_insurance"
+                    value={formData.life_insurance}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 100,000 บาท</p>
+                </div>
 
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className="bg-green-50 rounded-lg p-3">
-                              <p className="text-xs text-gray-600">ลงทุน</p>
-                              <p className="text-lg font-bold text-green-600">{formatCurrency(rec.investment_amount)}</p>
-                            </div>
-                            <div className="bg-blue-50 rounded-lg p-3">
-                              <p className="text-xs text-gray-600">ประหยัดภาษี</p>
-                              <p className="text-lg font-bold text-blue-600">{formatCurrency(rec.tax_saving)}</p>
-                            </div>
-                          </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    เบี้ยประกันสุขภาพ (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="health_insurance"
+                    value={formData.health_insurance}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 25,000 บาท</p>
+                </div>
 
-                          {rec.expected_return_1y && (
-                            <div className="mb-4">
-                              <p className="text-sm font-medium text-gray-700 mb-2">ผลตอบแทนคาดการณ์:</p>
-                              <div className="flex gap-2">
-                                <span className="text-xs bg-gray-100 px-2 py-1 rounded">1ปี: {rec.expected_return_1y}%</span>
-                                {rec.expected_return_3y > 0 && <span className="text-xs bg-gray-100 px-2 py-1 rounded">3ปี: {rec.expected_return_3y}%</span>}
-                                {rec.expected_return_5y > 0 && <span className="text-xs bg-gray-100 px-2 py-1 rounded">5ปี: {rec.expected_return_5y}%</span>}
-                              </div>
-                            </div>
-                          )}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ประกันชีวิตบิดามารดา (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="life_insurance_parents"
+                    value={formData.life_insurance_parents}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15,000 บาท</p>
+                </div>
 
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="font-medium text-green-600 mb-1">✓ ข้อดี</p>
-                              <ul className="list-disc list-inside space-y-1 text-gray-600">
-                                {rec.pros.map((pro, i) => <li key={i}>{pro}</li>)}
-                              </ul>
-                            </div>
-                            <div>
-                              <p className="font-medium text-red-600 mb-1">✗ ข้อเสีย</p>
-                              <ul className="list-disc list-inside space-y-1 text-gray-600">
-                                {rec.cons.map((con, i) => <li key={i}>{con}</li>)}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ประกันสุขภาพบิดามารดา (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="health_insurance_parents"
+                    value={formData.health_insurance_parents}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15,000 บาท</p>
+                </div>
 
-                    <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-sm text-yellow-800">{result.disclaimer}</p>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    กองทุนสำรองเลี้ยงชีพ (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="provident_fund"
+                    value={formData.provident_fund}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15% หรือ 500,000 บาท</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ประกันบำนาญ (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="pension_insurance"
+                    value={formData.pension_insurance}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15% หรือ 200,000 บาท</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    RMF (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="rmf"
+                    value={formData.rmf}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30% หรือ 500,000 บาท</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    SSF (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="ssf"
+                    value={formData.ssf}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30% หรือ 200,000 บาท</p>
+                </div>
+              </div>
+            </div>
+
+            {/* กลุ่มกระตุ้นเศรษฐกิจ */}
+            <div className="bg-purple-50 rounded-xl p-6 border-2 border-purple-200">
+              <h3 className="text-xl font-bold text-purple-800 mb-4">
+                💳 กลุ่มกระตุ้นเศรษฐกิจ
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ช้อปช่วยชาติ (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="shopping_deduction"
+                    value={formData.shopping_deduction}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30,000 บาท</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ซื้อ OTOP (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="otop_deduction"
+                    value={formData.otop_deduction}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 50,000 บาท</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ท่องเที่ยวในประเทศ (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="travel_deduction"
+                    value={formData.travel_deduction}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30,000 บาท</p>
+                </div>
+              </div>
+            </div>
+
+            {/* กลุ่มเงินบริจาค */}
+            <div className="bg-pink-50 rounded-xl p-6 border-2 border-pink-200">
+              <h3 className="text-xl font-bold text-pink-800 mb-4">
+                🎁 กลุ่มเงินบริจาค
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    บริจาคทั่วไป (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="donation_general"
+                    value={formData.donation_general}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">ลดหย่อนได้ 10% ของรายได้</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    บริจาคการศึกษา (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="donation_education"
+                    value={formData.donation_education}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">นับ 2 เท่า</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    บริจาคพรรคการเมือง (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="donation_political"
+                    value={formData.donation_political}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 10,000 บาท</p>
+                </div>
+              </div>
+            </div>
+
+            {/* ระดับความเสี่ยง */}
+            <div className="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                📊 ระดับความเสี่ยงที่ยอมรับได้ *
+              </label>
+              <select
+                name="risk_tolerance"
+                value={formData.risk_tolerance}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-yellow-500 focus:outline-none text-lg"
+              >
+                <option value="low">🛡️ ต่ำ - ไม่ชอบเสี่ยง (เน้นประกัน)</option>
+                <option value="medium">⚖️ กลาง - สมดุล (กระจายความเสี่ยง)</option>
+                <option value="high">🚀 สูง - ชอบลงทุน (เน้นกองทุน)</option>
+              </select>
+              <p className="text-xs text-gray-600 mt-2">
+                ⚠️ AI จะแนะนำแผนการลงทุนตามระดับความเสี่ยงที่คุณเลือก
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 shadow-lg text-lg"
+            >
+              {loading ? '⏳ กำลังวิเคราะห์และสร้างแผน...' : '🚀 คำนวณภาษีและรับคำแนะนำ 3 แผน'}
+            </button>
+          </form>
         </div>
-      </main>
-    </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border-2 border-red-500 text-red-700 px-6 py-4 rounded-lg mb-8">
+            <p className="font-semibold">❌ เกิดข้อผิดพลาด:</p>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {/* Results */}
+        {result && (
+          <div className="space-y-8">
+            {/* Tax Result */}
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                💰 ผลการคำนวณภาษี
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">รายได้รวม</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {result.tax_result.gross_income.toLocaleString()} ฿
+                  </p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">เงินได้สุทธิ</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {result.tax_result.taxable_income.toLocaleString()} ฿
+                  </p>
+                </div>
+                <div className="bg-red-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">ภาษีที่ต้องจ่าย</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {result.tax_result.tax_amount.toLocaleString()} ฿
+                  </p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">อัตราภาษีเฉลี่ย</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {result.tax_result.effective_tax_rate.toFixed(2)}%
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Multiple Plans */}
+            <MultiplePlansView plans={result.investment_plans.plans} />
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="text-center mt-12 text-gray-600">
+          <p>Powered by AI Tax Advisor | Version 3.0 Risk-Aware + Insurance Required</p>
+        </div>
+      </div>
+    </main>
   );
 }
