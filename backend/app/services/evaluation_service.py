@@ -1,6 +1,7 @@
 """
 Evaluation Service - Enhanced Version
 ปรับปรุงให้แสดงผลสวยงาม อ่านง่าย และจัดโฟลเดอร์เป็นระเบียบ
+รองรับ ROUGE, BLEU, BERTScore เต็มรูปแบบ
 """
 
 from typing import Dict, List, Any, Tuple
@@ -15,19 +16,21 @@ from rouge_score import rouge_scorer
 # BLEU
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 
-# BERTScore (Optional)
+# BERTScore
 try:
     from bert_score import score as bert_score
     BERTSCORE_AVAILABLE = True
 except:
     BERTSCORE_AVAILABLE = False
+    print("⚠️  BERTScore not available. Install with: pip install bert-score")
 
-# Thai tokenizer (Optional)
+# Thai tokenizer
 try:
     from pythainlp.tokenize import word_tokenize
     THAI_TOKENIZER_AVAILABLE = True
 except:
     THAI_TOKENIZER_AVAILABLE = False
+    print("⚠️  PyThaiNLP not available. Install with: pip install pythainlp")
 
 
 class Colors:
@@ -47,6 +50,7 @@ class EvaluationService:
     """
     Service สำหรับประเมินคุณภาพคำตอบ AI Tax Advisor
     Enhanced Version - แสดงผลสวยงามและอ่านง่าย
+    รองรับ ROUGE, BLEU, BERTScore
     """
     
     def __init__(self):
@@ -59,7 +63,13 @@ class EvaluationService:
         # BLEU smoothing
         self.smoothing = SmoothingFunction().method1
         
-        print(f"{Colors.GREEN}✅ Evaluation Service initialized{Colors.END}")
+        status = f"{Colors.GREEN}✅ Evaluation Service initialized{Colors.END}"
+        if BERTSCORE_AVAILABLE:
+            status += f" (BERTScore: {Colors.GREEN}available{Colors.END})"
+        else:
+            status += f" (BERTScore: {Colors.YELLOW}not available{Colors.END})"
+        
+        print(status)
     
     def tokenize_thai(self, text: str) -> List[str]:
         """Tokenize ภาษาไทย"""
@@ -100,6 +110,22 @@ class EvaluationService:
             'bleu3': bleu3,
             'bleu4': bleu4,
         }
+    
+    def calculate_bertscore(self, reference: str, hypothesis: str) -> Dict[str, float]:
+        """คำนวณ BERTScore"""
+        if not BERTSCORE_AVAILABLE:
+            return {}
+        
+        try:
+            P, R, F1 = bert_score([hypothesis], [reference], lang='th', verbose=False)
+            return {
+                'bertscore_precision': P.mean().item(),
+                'bertscore_recall': R.mean().item(),
+                'bertscore_f1': F1.mean().item()
+            }
+        except Exception as e:
+            print(f"  {Colors.YELLOW}⚠️  BERTScore error: {e}{Colors.END}")
+            return {}
     
     def calculate_numeric_accuracy(self, expected_value: float, actual_value: float, tolerance: float = 0.1) -> Tuple[float, bool]:
         """คำนวณความแม่นยำของตัวเลข"""
@@ -165,16 +191,41 @@ class EvaluationService:
             'structural_metrics': {}
         }
         
-        # 1. ประเมินข้อความ
+        # 1. ประเมินข้อความหลัก (description + plan_name)
         expected_text = f"{expected_plan.get('description', '')} {expected_plan.get('plan_name', '')}"
         ai_text = f"{ai_plan.get('description', '')} {ai_plan.get('plan_name', '')}"
         
         if expected_text.strip() and ai_text.strip():
+            # ROUGE
             rouge_scores = self.calculate_rouge(expected_text, ai_text)
+            results['text_metrics'].update(rouge_scores)
+            
+            # BLEU
             bleu_scores = self.calculate_bleu(expected_text, ai_text)
-            results['text_metrics'] = {**rouge_scores, **bleu_scores}
+            results['text_metrics'].update(bleu_scores)
+            
+            # BERTScore (ถ้าเปิดใช้)
+            if use_bertscore:
+                bert_scores = self.calculate_bertscore(expected_text, ai_text)
+                results['text_metrics'].update(bert_scores)
         
-        # 2. ประเมินตัวเลข
+        # 2. ประเมินข้อความ allocation categories
+        expected_allocs = expected_plan.get('allocations', [])
+        ai_allocs = ai_plan.get('allocations', [])
+        
+        allocation_text_scores = []
+        for exp_alloc, ai_alloc in zip(expected_allocs, ai_allocs[:len(expected_allocs)]):
+            exp_cat = exp_alloc.get('category', '')
+            ai_cat = ai_alloc.get('category', '')
+            
+            if exp_cat and ai_cat:
+                rouge = self.calculate_rouge(exp_cat, ai_cat)
+                allocation_text_scores.append(rouge.get('rouge1_f1', 0))
+        
+        if allocation_text_scores:
+            results['text_metrics']['avg_allocation_text_similarity'] = np.mean(allocation_text_scores)
+        
+        # 3. ประเมินตัวเลข
         numeric_fields = ['total_investment', 'total_tax_saving']
         for field in numeric_fields:
             expected_val = expected_plan.get(field, 0)
@@ -191,19 +242,16 @@ class EvaluationService:
                     'error_percentage': abs(expected_val - ai_val) / expected_val * 100 if expected_val > 0 else 0
                 }
         
-        # 3. ประเมินโครงสร้าง
-        expected_allocations = expected_plan.get('allocations', [])
-        ai_allocations = ai_plan.get('allocations', [])
-        
+        # 4. ประเมินโครงสร้าง
         results['structural_metrics'] = {
-            'expected_allocation_count': len(expected_allocations),
-            'actual_allocation_count': len(ai_allocations),
-            'has_correct_structure': 'allocations' in ai_plan and len(ai_allocations) > 0
+            'expected_allocation_count': len(expected_allocs),
+            'actual_allocation_count': len(ai_allocs),
+            'has_correct_structure': 'allocations' in ai_plan and len(ai_allocs) > 0
         }
         
-        # 4. ประเมิน allocations
+        # 5. ประเมิน allocations
         allocation_scores = []
-        for i, (exp_alloc, ai_alloc) in enumerate(zip(expected_allocations, ai_allocations[:len(expected_allocations)])):
+        for i, (exp_alloc, ai_alloc) in enumerate(zip(expected_allocs, ai_allocs[:len(expected_allocs)])):
             alloc_score = self.evaluate_allocation(exp_alloc, ai_alloc)
             allocation_scores.append(alloc_score)
         
@@ -220,18 +268,21 @@ class EvaluationService:
         """ประเมิน 1 allocation item"""
         results = {}
         
+        # Investment amount accuracy
         exp_inv = expected_alloc.get('investment_amount', 0)
         ai_inv = ai_alloc.get('investment_amount', 0)
         if exp_inv > 0:
             inv_accuracy, _ = self.calculate_numeric_accuracy(exp_inv, ai_inv, tolerance=0.2)
             results['investment_accuracy'] = inv_accuracy
         
+        # Tax saving accuracy
         exp_tax = expected_alloc.get('tax_saving', 0)
         ai_tax = ai_alloc.get('tax_saving', 0)
         if exp_tax > 0:
             tax_accuracy, _ = self.calculate_numeric_accuracy(exp_tax, ai_tax, tolerance=0.2)
             results['tax_saving_accuracy'] = tax_accuracy
         
+        # Category match
         results['category_match'] = expected_alloc.get('category', '').lower() in ai_alloc.get('category', '').lower()
         
         return results
@@ -265,7 +316,7 @@ class EvaluationService:
                 if 'numeric_metrics' in plan_results:
                     all_numeric_scores.append(plan_results['numeric_metrics'])
         
-        # คำนวณค่าเฉลี่ย
+        # คำนวณค่าเฉลี่ย text metrics
         if all_text_scores:
             avg_text_metrics = {}
             for key in all_text_scores[0].keys():
@@ -274,6 +325,7 @@ class EvaluationService:
                     avg_text_metrics[f'avg_{key}'] = np.mean(values)
             results['overall_metrics']['text_metrics'] = avg_text_metrics
         
+        # คำนวณค่าเฉลี่ย numeric metrics
         if all_numeric_scores:
             all_accuracies = []
             for plan_numerics in all_numeric_scores:
@@ -328,19 +380,31 @@ class EvaluationService:
                     score = text_m['avg_rouge1_f1']
                     color = self.get_score_color(score, 'general')
                     emoji = self.get_score_emoji(score, 'general')
-                    print(f"     {emoji} ROUGE-1: {color}{score:.4f}{Colors.END}")
+                    print(f"     {emoji} ROUGE-1 F1: {color}{score:.4f}{Colors.END}")
                 
                 if 'avg_rouge2_f1' in text_m:
                     score = text_m['avg_rouge2_f1']
                     color = self.get_score_color(score, 'general')
                     emoji = self.get_score_emoji(score, 'general')
-                    print(f"     {emoji} ROUGE-2: {color}{score:.4f}{Colors.END}")
+                    print(f"     {emoji} ROUGE-2 F1: {color}{score:.4f}{Colors.END}")
+                
+                if 'avg_rougeL_f1' in text_m:
+                    score = text_m['avg_rougeL_f1']
+                    color = self.get_score_color(score, 'general')
+                    emoji = self.get_score_emoji(score, 'general')
+                    print(f"     {emoji} ROUGE-L F1: {color}{score:.4f}{Colors.END}")
                 
                 if 'avg_bleu4' in text_m:
                     score = text_m['avg_bleu4']
                     color = self.get_score_color(score, 'general')
                     emoji = self.get_score_emoji(score, 'general')
-                    print(f"     {emoji} BLEU-4:  {color}{score:.4f}{Colors.END}")
+                    print(f"     {emoji} BLEU-4:     {color}{score:.4f}{Colors.END}")
+                
+                if 'avg_bertscore_f1' in text_m:
+                    score = text_m['avg_bertscore_f1']
+                    color = self.get_score_color(score, 'general')
+                    emoji = self.get_score_emoji(score, 'general')
+                    print(f"     {emoji} BERTScore:  {color}{score:.4f}{Colors.END}")
             
             print()
         
@@ -375,6 +439,18 @@ class EvaluationService:
                             print(f"    Actual:   {actual:>12,.0f} บาท")
                             print(f"    Accuracy: {color}{acc:.1f}%{Colors.END}")
                 
+                # Text metrics
+                if 'text_metrics' in plan_results:
+                    text_m = plan_results['text_metrics']
+                    print(f"\n  {Colors.BOLD}Text Similarity:{Colors.END}")
+                    
+                    if 'rouge1_f1' in text_m:
+                        print(f"    ROUGE-1 F1: {text_m['rouge1_f1']:.4f}")
+                    if 'bleu4' in text_m:
+                        print(f"    BLEU-4:     {text_m['bleu4']:.4f}")
+                    if 'bertscore_f1' in text_m:
+                        print(f"    BERTScore:  {text_m['bertscore_f1']:.4f}")
+                
                 # Allocation metrics
                 if 'allocation_metrics' in plan_results:
                     alloc_m = plan_results['allocation_metrics']
@@ -408,7 +484,9 @@ class EvaluationService:
         
         all_rouge1 = []
         all_rouge2 = []
+        all_rougeL = []
         all_bleu4 = []
+        all_bertscore = []
         all_numeric_acc = []
         
         for result in all_results:
@@ -421,8 +499,12 @@ class EvaluationService:
                         all_rouge1.append(text_m['avg_rouge1_f1'])
                     if 'avg_rouge2_f1' in text_m:
                         all_rouge2.append(text_m['avg_rouge2_f1'])
+                    if 'avg_rougeL_f1' in text_m:
+                        all_rougeL.append(text_m['avg_rougeL_f1'])
                     if 'avg_bleu4' in text_m:
                         all_bleu4.append(text_m['avg_bleu4'])
+                    if 'avg_bertscore_f1' in text_m:
+                        all_bertscore.append(text_m['avg_bertscore_f1'])
                 
                 if 'avg_numeric_accuracy' in overall:
                     all_numeric_acc.append(overall['avg_numeric_accuracy'])
@@ -431,8 +513,12 @@ class EvaluationService:
             summary['text_metrics']['avg_rouge1_f1'] = np.mean(all_rouge1)
         if all_rouge2:
             summary['text_metrics']['avg_rouge2_f1'] = np.mean(all_rouge2)
+        if all_rougeL:
+            summary['text_metrics']['avg_rougeL_f1'] = np.mean(all_rougeL)
         if all_bleu4:
             summary['text_metrics']['avg_bleu4'] = np.mean(all_bleu4)
+        if all_bertscore:
+            summary['text_metrics']['avg_bertscore_f1'] = np.mean(all_bertscore)
         if all_numeric_acc:
             summary['numeric_metrics']['avg_accuracy'] = np.mean(all_numeric_acc)
             summary['numeric_metrics']['min_accuracy'] = np.min(all_numeric_acc)
@@ -459,7 +545,7 @@ class EvaluationService:
                 metric_name = key.replace('avg_', '').replace('_', '-').upper()
                 color = self.get_score_color(value, 'general')
                 emoji = self.get_score_emoji(value, 'general')
-                print(f"  {emoji} {metric_name:12} : {color}{value:.4f}{Colors.END}")
+                print(f"  {emoji} {metric_name:15} : {color}{value:.4f}{Colors.END}")
             print()
         
         # Numeric Metrics
