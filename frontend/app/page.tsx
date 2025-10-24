@@ -46,10 +46,29 @@ export default function Home() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'risk_tolerance' ? value : parseInt(value) || 0,
-    }));
+    
+    if (name === 'risk_tolerance') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    } else {
+      // ถ้าเป็นช่องตัวเลข
+      if (value === '') {
+        // ถ้าลบหมดให้เป็น 0
+        setFormData((prev) => ({
+          ...prev,
+          [name]: 0,
+        }));
+      } else {
+        // แปลงเป็นตัวเลข
+        const numValue = parseInt(value);
+        setFormData((prev) => ({
+          ...prev,
+          [name]: isNaN(numValue) ? 0 : numValue,
+        }));
+      }
+    }
   };
 
   const handleCalculate = async (e: React.FormEvent) => {
@@ -108,8 +127,9 @@ export default function Home() {
                 <input
                   type="number"
                   name="gross_income"
-                  value={formData.gross_income}
+                  value={formData.gross_income === 0 ? '' : formData.gross_income}
                   onChange={handleInputChange}
+                  placeholder="กรอกรายได้"
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:outline-none"
                   required
                 />
@@ -146,8 +166,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="spouse_deduction"
-                    value={formData.spouse_deduction}
+                    value={formData.spouse_deduction === 0 ? '' : formData.spouse_deduction}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">คู่สมรสไม่มีรายได้ 60,000 บาท</p>
@@ -160,8 +181,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="child_deduction"
-                    value={formData.child_deduction}
+                    value={formData.child_deduction === 0 ? '' : formData.child_deduction}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">คนละ 30,000 บาท (สูงสุด 3 คน)</p>
@@ -174,8 +196,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="parent_support"
-                    value={formData.parent_support}
+                    value={formData.parent_support === 0 ? '' : formData.parent_support}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">คนละ 30,000 บาท (สูงสุด 2 คน)</p>
@@ -188,8 +211,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="disabled_support"
-                    value={formData.disabled_support}
+                    value={formData.disabled_support === 0 ? '' : formData.disabled_support}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">คนละ 60,000 บาท</p>
@@ -210,8 +234,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="life_insurance"
-                    value={formData.life_insurance}
+                    value={formData.life_insurance === 0 ? '' : formData.life_insurance}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 100,000 บาท</p>
@@ -224,8 +249,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="health_insurance"
-                    value={formData.health_insurance}
+                    value={formData.health_insurance === 0 ? '' : formData.health_insurance}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 25,000 บาท</p>
@@ -238,8 +264,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="life_insurance_parents"
-                    value={formData.life_insurance_parents}
+                    value={formData.life_insurance_parents === 0 ? '' : formData.life_insurance_parents}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 15,000 บาท</p>
@@ -252,8 +279,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="health_insurance_parents"
-                    value={formData.health_insurance_parents}
+                    value={formData.health_insurance_parents === 0 ? '' : formData.health_insurance_parents}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 15,000 บาท</p>
@@ -266,8 +294,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="provident_fund"
-                    value={formData.provident_fund}
+                    value={formData.provident_fund === 0 ? '' : formData.provident_fund}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 15% หรือ 500,000 บาท</p>
@@ -280,8 +309,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="pension_insurance"
-                    value={formData.pension_insurance}
+                    value={formData.pension_insurance === 0 ? '' : formData.pension_insurance}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 15% หรือ 200,000 บาท</p>
@@ -294,8 +324,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="rmf"
-                    value={formData.rmf}
+                    value={formData.rmf === 0 ? '' : formData.rmf}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 30% หรือ 500,000 บาท</p>
@@ -308,8 +339,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="ssf"
-                    value={formData.ssf}
+                    value={formData.ssf === 0 ? '' : formData.ssf}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 30% หรือ 200,000 บาท</p>
@@ -330,8 +362,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="shopping_deduction"
-                    value={formData.shopping_deduction}
+                    value={formData.shopping_deduction === 0 ? '' : formData.shopping_deduction}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 30,000 บาท</p>
@@ -344,8 +377,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="otop_deduction"
-                    value={formData.otop_deduction}
+                    value={formData.otop_deduction === 0 ? '' : formData.otop_deduction}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 50,000 บาท</p>
@@ -358,8 +392,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="travel_deduction"
-                    value={formData.travel_deduction}
+                    value={formData.travel_deduction === 0 ? '' : formData.travel_deduction}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 30,000 บาท</p>
@@ -380,8 +415,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="donation_general"
-                    value={formData.donation_general}
+                    value={formData.donation_general === 0 ? '' : formData.donation_general}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">ลดหย่อนได้ 10% ของรายได้</p>
@@ -394,8 +430,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="donation_education"
-                    value={formData.donation_education}
+                    value={formData.donation_education === 0 ? '' : formData.donation_education}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">นับ 2 เท่า</p>
@@ -408,8 +445,9 @@ export default function Home() {
                   <input
                     type="number"
                     name="donation_political"
-                    value={formData.donation_political}
+                    value={formData.donation_political === 0 ? '' : formData.donation_political}
                     onChange={handleInputChange}
+                    placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 10,000 บาท</p>
