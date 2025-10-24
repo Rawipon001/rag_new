@@ -1,6 +1,6 @@
 """
 Tax Calculator Service
-Version: Support All Deduction Categories
+Version: Support All Deduction Categories - ปี 2568
 """
 
 from typing import Dict
@@ -8,7 +8,7 @@ from app.models import TaxCalculationRequest, TaxCalculationResult
 
 
 class TaxCalculatorService:
-    """Service สำหรับคำนวณภาษีเงินได้บุคคลธรรมดา"""
+    """Service สำหรับคำนวณภาษีเงินได้บุคคลธรรมดา ปี 2568"""
     
     TAX_BRACKETS = [
         (150000, 0),
@@ -22,11 +22,11 @@ class TaxCalculatorService:
     ]
     
     def calculate_tax(self, request: TaxCalculationRequest) -> TaxCalculationResult:
-        """คำนวณภาษีเงินได้"""
+        """คำนวณภาษีเงินได้ ปี 2568"""
         
         gross_income = request.gross_income
         
-        # รวมค่าลดหย่อนทั้งหมด
+        # รวมค่าลดหย่อนทั้งหมด ปี 2568
         total_deductions = (
             # กลุ่มส่วนตัว/ครอบครัว
             request.personal_deduction +
@@ -35,26 +35,36 @@ class TaxCalculatorService:
             request.parent_support +
             request.disabled_support +
             
-            # กลุ่มประกันและการลงทุน
+            # กลุ่มประกันชีวิตและสุขภาพ
             request.life_insurance +
+            request.life_insurance_pension +
             request.life_insurance_parents +
             request.health_insurance +
             request.health_insurance_parents +
+            request.social_security +
+            
+            # กลุ่มกองทุนและการลงทุน
             request.pension_insurance +
             request.provident_fund +
             request.gpf +
-            request.pvd +
+            request.pvd_teacher +
             request.rmf +
-            request.ssf +
             
-            # กลุ่มกระตุ้นเศรษฐกิจ
-            request.shopping_deduction +
-            request.otop_deduction +
-            request.travel_deduction +
+            # กลุ่มกองทุน ESG (ใหม่ปี 2568 - แทน SSF)
+            request.thai_esg +
+            request.thai_esgx_new +
+            request.thai_esgx_ltf +
+            
+            # กลุ่มอื่นๆ (ใหม่ปี 2568)
+            request.stock_investment +
+            request.easy_e_receipt +
+            request.home_loan_interest +
+            request.nsf +
             
             # กลุ่มเงินบริจาค
             request.donation_general +
             (request.donation_education * 2) +  # นับ 2 เท่า
+            request.donation_social_enterprise +
             request.donation_political
         )
         

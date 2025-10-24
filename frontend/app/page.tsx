@@ -11,31 +11,39 @@ export default function Home() {
     // กลุ่มส่วนตัว/ครอบครัว
     personal_deduction: 60000, // ค่าคงที่ ไม่ให้แก้
     has_spouse: false, // มีคู่สมรสไม่มีรายได้หรือไม่
-    number_of_children: 0, // จำนวนบุตร
-    number_of_parents: 0, // จำนวนบิดามารดา
-    number_of_disabled: 0, // จำนวนคนพิการ/ทุพพลภาพ
+    number_of_children: 0, // จำนวนบุตร (ไม่จำกัด x 30,000)
+    number_of_parents: 0, // จำนวนบิดามารดา (สูงสุด 4 คน x 60,000)
+    number_of_disabled: 0, // จำนวนคนพิการ/ทุพพลภาพ (ไม่จำกัด x 60,000)
     
     // กลุ่มประกันและการลงทุน
-    life_insurance: 0,
-    life_insurance_parents: 0,
-    health_insurance: 0,
-    health_insurance_parents: 0,
-    pension_insurance: 0,
-    provident_fund: 0,
-    gpf: 0,
-    pvd: 0,
-    rmf: 0,
-    ssf: 0,
+    life_insurance: 0, // สูงสุด 100,000
+    life_insurance_pension: 0, // ประกันชีวิตแบบบำนาญ สูงสุด 10,000
+    life_insurance_parents: 0, // สูงสุด 15,000/คน
+    health_insurance: 0, // สูงสุด 25,000
+    health_insurance_parents: 0, // สูงสุด 15,000/คน (สูงสุด 4 คน = 60,000)
+    pension_insurance: 0, // ประกันบำนาญ สูงสุด 15% หรือ 200,000
+    social_security: 0, // ประกันสังคม สูงสุด 9,000
+    provident_fund: 0, // PVD สูงสุด 15% หรือ 500,000
+    gpf: 0, // กบข. สูงสุด 30% หรือ 500,000
+    pvd_teacher: 0, // กองทุนสงเคราะห์ครูฯ สูงสุด 15% หรือ 500,000
     
-    // กลุ่มกระตุ้นเศรษฐกิจ
-    shopping_deduction: 0,
-    otop_deduction: 0,
-    travel_deduction: 0,
+    // กลุ่มกองทุน (เปลี่ยนแปลงปี 2568 - ไม่มี SSF แล้ว!)
+    rmf: 0, // RMF สูงสุด 30% หรือ 500,000
+    thai_esg: 0, // ThaiESG สูงสุด 300,000 (ยกเว้น 30%)
+    thai_esgx_new: 0, // ThaiESGX เงินใหม่ สูงสุด 300,000 (ยกเว้น 30%)
+    thai_esgx_ltf: 0, // ThaiESGX จาก LTF สูงสุด 300,000
+    
+    // กลุ่มอื่นๆ (ใหม่ปี 2568)
+    stock_investment: 0, // ลงทุนหุ้นจดทะเบียนใหม่ สูงสุด 100,000 (ถือ 2 ปี)
+    easy_e_receipt: 0, // Easy e-Receipt สูงสุด 50,000
+    home_loan_interest: 0, // ดอกเบี้ยสร้างบ้าน (2567-2568) สูงสุด 100,000
+    nsf: 0, // กองทุนการออมแห่งชาติ (กอช.) สูงสุด 30,000
     
     // กลุ่มเงินบริจาค
-    donation_general: 0,
-    donation_education: 0,
-    donation_political: 0,
+    donation_general: 0, // บริจาคทั่วไป 10% ของรายได้
+    donation_education: 0, // บริจาคการศึกษา (นับ 2 เท่า)
+    donation_social_enterprise: 0, // บริจาค Social Enterprise สูงสุด 100,000
+    donation_political: 0, // บริจาคพรรคการเมือง สูงสุด 10,000
     
     risk_tolerance: 'medium',
   });
@@ -86,11 +94,11 @@ export default function Home() {
 
     try {
       // ✅ คำนวณเบื้องต้นว่าต้องจ่ายภาษีหรือไม่
-      // คำนวณค่าลดหย่อนตามจำนวนคนจริง (มีข้อจำกัด)
+      // คำนวณค่าลดหย่อนตามจำนวนคนจริง
       const spouse_deduction = formData.has_spouse ? 60000 : 0;
-      const child_deduction = Math.min(formData.number_of_children, 3) * 30000; // สูงสุด 3 คน
-      const parent_support = Math.min(formData.number_of_parents, 4) * 30000; // สูงสุด 4 คน (บิดา-มารดา 2 ฝ่าย)
-      const disabled_support = formData.number_of_disabled * 60000; // ไม่จำกัดจำนวน
+      const child_deduction = formData.number_of_children * 30000; // ไม่จำกัดจำนวน
+      const parent_support = Math.min(formData.number_of_parents, 4) * 60000; // สูงสุด 4 คน x 60,000
+      const disabled_support = formData.number_of_disabled * 60000; // ไม่จำกัดจำนวน x 60,000
       
       const totalDeductions = 
         formData.personal_deduction +
@@ -99,26 +107,32 @@ export default function Home() {
         parent_support +
         disabled_support +
         formData.life_insurance +
+        formData.life_insurance_pension +
         formData.life_insurance_parents +
         formData.health_insurance +
         formData.health_insurance_parents +
         formData.pension_insurance +
+        formData.social_security +
         formData.provident_fund +
         formData.gpf +
-        formData.pvd +
+        formData.pvd_teacher +
         formData.rmf +
-        formData.ssf +
-        formData.shopping_deduction +
-        formData.otop_deduction +
-        formData.travel_deduction +
+        formData.thai_esg +
+        formData.thai_esgx_new +
+        formData.thai_esgx_ltf +
+        formData.stock_investment +
+        formData.easy_e_receipt +
+        formData.home_loan_interest +
+        formData.nsf +
         formData.donation_general +
         (formData.donation_education * 2) +
+        formData.donation_social_enterprise +
         formData.donation_political;
 
       const taxableIncome = Math.max(0, formData.gross_income - totalDeductions);
       const requiresTax = taxableIncome > 150000; // เกินขั้นแรกที่ยกเว้นภาษี (0-150,000 บาท)
 
-      console.log('📊 Quick Tax Check:');
+      console.log('📊 Quick Tax Check (ปี 2568):');
       console.log(`   รายได้รวม: ${formData.gross_income.toLocaleString()} บาท`);
       console.log(`   ค่าลดหย่อนรวม: ${totalDeductions.toLocaleString()} บาท`);
       console.log(`   เงินได้สุทธิ: ${taxableIncome.toLocaleString()} บาท`);
@@ -185,17 +199,20 @@ export default function Home() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            🏦 AI Tax Advisor
+            🏦 AI Tax Advisor ปี 2568
           </h1>
           <p className="text-lg text-gray-600">
-            ระบบแนะนำการวางแผนภาษี - ได้หลายแผนการลงทุนพร้อมเปรียบเทียบ
+            ระบบแนะนำการวางแผนภาษี - อัปเดตตามกฎหมายปี 2568
+          </p>
+          <p className="text-sm text-orange-600 font-semibold mt-2">
+            🆕 เปลี่ยนแปลง: ไม่มี SSF แล้ว | มี ThaiESG/ThaiESGX แทน | Easy e-Receipt เพิ่มเป็น 50,000
           </p>
         </div>
 
         {/* Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            📝 กรอกข้อมูลรายได้และค่าลดหย่อน
+            📝 กรอกข้อมูลรายได้และค่าลดหย่อน (ปี 2568)
           </h2>
 
           <form onSubmit={handleCalculate} className="space-y-8">
@@ -269,16 +286,15 @@ export default function Home() {
                     onChange={handleInputChange}
                     placeholder="0"
                     min="0"
-                    max="10"
+                    max="20"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    คนละ 30,000 บาท (สูงสุด 3 คน = 90,000 บาท)
+                    คนละ 30,000 บาท (ไม่จำกัดจำนวน)
                   </p>
                   {formData.number_of_children > 0 && (
                     <p className="text-xs text-blue-600 font-semibold mt-1">
                       = {(formData.number_of_children * 30000).toLocaleString()} บาท
-                      {formData.number_of_children > 3 && ' (เกิน 3 คนจะนับแค่ 90,000 บาท)'}
                     </p>
                   )}
                 </div>
@@ -299,17 +315,17 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    คนละ 30,000 บาท (สูงสุด 4 คน = 120,000 บาท)
+                    คนละ 60,000 บาท (สูงสุด 4 คน = 240,000 บาท) 🆕
                   </p>
                   {formData.number_of_parents > 0 && (
                     <p className="text-xs text-blue-600 font-semibold mt-1">
-                      = {(formData.number_of_parents * 30000).toLocaleString()} บาท
+                      = {(Math.min(formData.number_of_parents, 4) * 60000).toLocaleString()} บาท
                     </p>
                   )}
                 </div>
 
                 {/* จำนวนคนพิการ */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     จำนวนคนพิการ/ทุพพลภาพ (คน)
                   </label>
@@ -324,7 +340,7 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    คนละ 60,000 บาท
+                    คนละ 60,000 บาท (ไม่จำกัดจำนวน)
                   </p>
                   {formData.number_of_disabled > 0 && (
                     <p className="text-xs text-blue-600 font-semibold mt-1">
@@ -335,10 +351,10 @@ export default function Home() {
               </div>
             </div>
 
-            {/* กลุ่มประกันชีวิตและการลงทุน */}
+            {/* กลุ่มประกันชีวิตและสุขภาพ */}
             <div className="bg-green-50 rounded-xl p-6 border-2 border-green-200">
               <h3 className="text-xl font-bold text-green-800 mb-4">
-                🏦 กลุ่มประกันชีวิตและการลงทุน
+                🏥 กลุ่มประกันชีวิตและสุขภาพ
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -354,6 +370,21 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 100,000 บาท</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    ประกันชีวิตแบบบำนาญ (บาท) 🆕
+                  </label>
+                  <input
+                    type="number"
+                    name="life_insurance_pension"
+                    value={formData.life_insurance_pension === 0 ? '' : formData.life_insurance_pension}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 10,000 บาท (แยกต่างหาก)</p>
                 </div>
 
                 <div>
@@ -383,7 +414,7 @@ export default function Home() {
                     placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15,000 บาท</p>
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15,000 บาท/คน</p>
                 </div>
 
                 <div>
@@ -398,12 +429,35 @@ export default function Home() {
                     placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15,000 บาท</p>
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15,000 บาท/คน (สูงสุด 4 คน)</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    กองทุนสำรองเลี้ยงชีพ (บาท)
+                    ประกันสังคม (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="social_security"
+                    value={formData.social_security === 0 ? '' : formData.social_security}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 9,000 บาท (หักอัตโนมัติ)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* กลุ่มกองทุนและการลงทุน */}
+            <div className="bg-purple-50 rounded-xl p-6 border-2 border-purple-200">
+              <h3 className="text-xl font-bold text-purple-800 mb-4">
+                💼 กลุ่มกองทุนและการลงทุน
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    กองทุนสำรองเลี้ยงชีพ (PVD) (บาท)
                   </label>
                   <input
                     type="number"
@@ -411,7 +465,37 @@ export default function Home() {
                     value={formData.provident_fund === 0 ? '' : formData.provident_fund}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 15% หรือ 500,000 บาท</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    กบข. (กองทุนบำเหน็จบำนาญ) (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="gpf"
+                    value={formData.gpf === 0 ? '' : formData.gpf}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30% หรือ 500,000 บาท (ข้าราชการ)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    กองทุนสงเคราะห์ครูฯ (บาท)
+                  </label>
+                  <input
+                    type="number"
+                    name="pvd_teacher"
+                    value={formData.pvd_teacher === 0 ? '' : formData.pvd_teacher}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 15% หรือ 500,000 บาท</p>
                 </div>
@@ -426,7 +510,7 @@ export default function Home() {
                     value={formData.pension_insurance === 0 ? '' : formData.pension_insurance}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 15% หรือ 200,000 บาท</p>
                 </div>
@@ -441,75 +525,125 @@ export default function Home() {
                     value={formData.rmf === 0 ? '' : formData.rmf}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30% หรือ 500,000 บาท</p>
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30% หรือ 500,000 บาท (ยกเว้น 30%)</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    SSF (บาท)
+                    กองทุน ThaiESG (บาท) 🆕
                   </label>
                   <input
                     type="number"
-                    name="ssf"
-                    value={formData.ssf === 0 ? '' : formData.ssf}
+                    name="thai_esg"
+                    value={formData.thai_esg === 0 ? '' : formData.thai_esg}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30% หรือ 200,000 บาท</p>
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 300,000 บาท (ยกเว้น 30%) ถือ 8 ปี</p>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    กองทุน ThaiESGX - เงินใหม่ (บาท) 🆕
+                  </label>
+                  <input
+                    type="number"
+                    name="thai_esgx_new"
+                    value={formData.thai_esgx_new === 0 ? '' : formData.thai_esgx_new}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 300,000 บาท (ยกเว้น 30%)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    กองทุน ThaiESGX - จาก LTF (บาท) 🆕
+                  </label>
+                  <input
+                    type="number"
+                    name="thai_esgx_ltf"
+                    value={formData.thai_esgx_ltf === 0 ? '' : formData.thai_esgx_ltf}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 300,000 บาท (สะสมจาก LTF เดิม)</p>
+                </div>
+              </div>
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">
+                  ⚠️ <strong>สำคัญ:</strong> SSF ยกเลิกแล้วในปี 2568 → ใช้ ThaiESG/ThaiESGX แทน
+                </p>
               </div>
             </div>
 
-            {/* กลุ่มกระตุ้นเศรษฐกิจ */}
-            <div className="bg-purple-50 rounded-xl p-6 border-2 border-purple-200">
-              <h3 className="text-xl font-bold text-purple-800 mb-4">
-                💳 กลุ่มกระตุ้นเศรษฐกิจ
+            {/* กลุ่มอื่นๆ (ใหม่ปี 2568) */}
+            <div className="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
+              <h3 className="text-xl font-bold text-yellow-800 mb-4">
+                🆕 กลุ่มอื่นๆ (ใหม่ปี 2568)
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ช้อปช่วยชาติ (บาท)
+                    ลงทุนหุ้นจดทะเบียนใหม่ (บาท) 🆕
                   </label>
                   <input
                     type="number"
-                    name="shopping_deduction"
-                    value={formData.shopping_deduction === 0 ? '' : formData.shopping_deduction}
+                    name="stock_investment"
+                    value={formData.stock_investment === 0 ? '' : formData.stock_investment}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-yellow-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">สูงสุด 30,000 บาท</p>
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 100,000 บาท (ถือครบ 2 ปี)</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ซื้อ OTOP (บาท)
+                    Easy e-Receipt (บาท) 🆕
                   </label>
                   <input
                     type="number"
-                    name="otop_deduction"
-                    value={formData.otop_deduction === 0 ? '' : formData.otop_deduction}
+                    name="easy_e_receipt"
+                    value={formData.easy_e_receipt === 0 ? '' : formData.easy_e_receipt}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-yellow-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">สูงสุด 50,000 บาท</p>
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 50,000 บาท (ใช้จ่ายผ่าน QR/e-payment)</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ท่องเที่ยวในประเทศ (บาท)
+                    ดอกเบี้ยสร้างบ้าน (2567-2568) (บาท) 🆕
                   </label>
                   <input
                     type="number"
-                    name="travel_deduction"
-                    value={formData.travel_deduction === 0 ? '' : formData.travel_deduction}
+                    name="home_loan_interest"
+                    value={formData.home_loan_interest === 0 ? '' : formData.home_loan_interest}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-yellow-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 100,000 บาท (ดอกเบี้ยเงินกู้ซื้อ/สร้างบ้าน)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    กองทุนการออมแห่งชาติ (กอช.) (บาท) 🆕
+                  </label>
+                  <input
+                    type="number"
+                    name="nsf"
+                    value={formData.nsf === 0 ? '' : formData.nsf}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-yellow-500 focus:outline-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">สูงสุด 30,000 บาท</p>
                 </div>
@@ -521,7 +655,7 @@ export default function Home() {
               <h3 className="text-xl font-bold text-pink-800 mb-4">
                 🎁 กลุ่มเงินบริจาค
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     บริจาคทั่วไป (บาท)
@@ -539,7 +673,7 @@ export default function Home() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    บริจาคการศึกษา (บาท)
+                    บริจาคการศึกษา (บาท) ⭐
                   </label>
                   <input
                     type="number"
@@ -549,7 +683,27 @@ export default function Home() {
                     placeholder="0"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">นับ 2 เท่า</p>
+                  <p className="text-xs text-gray-500 mt-1">นับ 2 เท่า! (คุ้มสุด)</p>
+                  {formData.donation_education > 0 && (
+                    <p className="text-xs text-pink-600 font-semibold mt-1">
+                      = ลดหย่อนได้ {(formData.donation_education * 2).toLocaleString()} บาท
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    บริจาค Social Enterprise (บาท) 🆕
+                  </label>
+                  <input
+                    type="number"
+                    name="donation_social_enterprise"
+                    value={formData.donation_social_enterprise === 0 ? '' : formData.donation_social_enterprise}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">สูงสุด 100,000 บาท (องค์กรเพื่อสังคม)</p>
                 </div>
 
                 <div>
@@ -570,7 +724,7 @@ export default function Home() {
             </div>
 
             {/* ระดับความเสี่ยง */}
-            <div className="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
+            <div className="bg-indigo-50 rounded-xl p-6 border-2 border-indigo-200">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 📊 ระดับความเสี่ยงที่ยอมรับได้ *
               </label>
@@ -578,7 +732,7 @@ export default function Home() {
                 name="risk_tolerance"
                 value={formData.risk_tolerance}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-yellow-500 focus:outline-none text-lg"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none text-lg"
               >
                 <option value="low">🛡️ ต่ำ - ไม่ชอบเสี่ยง (เน้นประกัน)</option>
                 <option value="medium">⚖️ กลาง - สมดุล (กระจายความเสี่ยง)</option>
@@ -595,7 +749,7 @@ export default function Home() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 shadow-lg text-lg"
             >
-              {loading ? '⏳ กำลังวิเคราะห์และสร้างแผน...' : '🚀 คำนวณภาษีและรับคำแนะนำ 3 แผน'}
+              {loading ? '⏳ กำลังวิเคราะห์และสร้างแผน...' : '🚀 คำนวณภาษีและรับคำแนะนำ 3 แผน (ปี 2568)'}
             </button>
           </form>
         </div>
@@ -614,7 +768,7 @@ export default function Home() {
             {/* Tax Result */}
             <div className="bg-white rounded-2xl shadow-xl p-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                💰 ผลการคำนวณภาษี
+                💰 ผลการคำนวณภาษี (ปี 2568)
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-blue-50 rounded-lg p-4">
@@ -690,7 +844,8 @@ export default function Home() {
 
         {/* Footer */}
         <div className="text-center mt-12 text-gray-600">
-          <p>Powered by AI Tax Advisor | Version 3.1 with Smart Tax Check</p>
+          <p>Powered by AI Tax Advisor | Version 4.0 - อัปเดตปี 2568</p>
+          <p className="text-sm mt-2">🆕 เปลี่ยนแปลง: ยกเลิก SSF | เพิ่ม ThaiESG/ThaiESGX | Easy e-Receipt 50,000 | ค่าอุปการะบิดามารดา 60,000/คน</p>
         </div>
       </div>
     </main>

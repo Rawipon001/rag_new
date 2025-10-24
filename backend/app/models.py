@@ -1,6 +1,6 @@
 """
 Pydantic Models
-Version: Multiple Plans + Categorized Form
+Version: ปี 2568 - อัปเดตตามกฎหมายใหม่
 """
 
 from pydantic import BaseModel, Field
@@ -8,11 +8,11 @@ from typing import List, Optional
 
 
 # ===================================
-# Request Models (จัดหมวดหมู่แล้ว)
+# Request Models (จัดหมวดหมู่ปี 2568)
 # ===================================
 
 class TaxCalculationRequest(BaseModel):
-    """ข้อมูลรายได้และค่าลดหย่อน (จัดหมวดหมู่)"""
+    """ข้อมูลรายได้และค่าลดหย่อน ปี 2568"""
     
     # รายได้
     gross_income: int = Field(..., description="รายได้รวม", ge=0)
@@ -20,30 +20,40 @@ class TaxCalculationRequest(BaseModel):
     # กลุ่มลดหย่อนส่วนตัว/ครอบครัว
     personal_deduction: int = Field(60000, description="ค่าลดหย่อนส่วนตัว", ge=0)
     spouse_deduction: int = Field(0, description="ค่าลดหย่อนคู่สมรส (ไม่มีรายได้)", ge=0, le=60000)
-    child_deduction: int = Field(0, description="ค่าเลี้ยงดูบุตร (คนละ 30,000)", ge=0)
-    parent_support: int = Field(0, description="ค่าอุปการะเลี้ยงดูบิดามารดา (คนละ 30,000)", ge=0, le=60000)
-    disabled_support: int = Field(0, description="ค่าอุปการะคนพิการ/ทุพพลภาพ (คนละ 60,000)", ge=0)
+    child_deduction: int = Field(0, description="ค่าเลี้ยงดูบุตร (คนละ 30,000 ไม่จำกัดจำนวน)", ge=0)
+    parent_support: int = Field(0, description="ค่าอุปการะเลี้ยงดูบิดามารดา (คนละ 60,000 สูงสุด 4 คน)", ge=0, le=240000)
+    disabled_support: int = Field(0, description="ค่าอุปการะคนพิการ/ทุพพลภาพ (คนละ 60,000 ไม่จำกัด)", ge=0)
     
-    # กลุ่มประกันชีวิตและการลงทุน
+    # กลุ่มประกันชีวิตและสุขภาพ
     life_insurance: int = Field(0, description="เบี้ยประกันชีวิต", ge=0, le=100000)
-    life_insurance_parents: int = Field(0, description="เบี้ยประกันชีวิตบิดามารดา", ge=0, le=15000)
+    life_insurance_pension: int = Field(0, description="ประกันชีวิตแบบบำนาญ", ge=0, le=10000)
+    life_insurance_parents: int = Field(0, description="เบี้ยประกันชีวิตบิดามารดา", ge=0, le=60000)
     health_insurance: int = Field(0, description="เบี้ยประกันสุขภาพ", ge=0, le=25000)
-    health_insurance_parents: int = Field(0, description="เบี้ยประกันสุขภาพบิดามารดา", ge=0, le=15000)
-    pension_insurance: int = Field(0, description="เบี้ยประกันบำนาญ", ge=0)
-    provident_fund: int = Field(0, description="กองทุนสำรองเลี้ยงชีพ", ge=0)
-    gpf: int = Field(0, description="กองทุนบำเหน็จบำนาญข้าราชการ (กบข.)", ge=0)
-    pvd: int = Field(0, description="กองทุนสงเคราะห์ครูโรงเรียนเอกชน (กสศ.)", ge=0)
-    rmf: int = Field(0, description="RMF", ge=0)
-    ssf: int = Field(0, description="SSF", ge=0)
+    health_insurance_parents: int = Field(0, description="เบี้ยประกันสุขภาพบิดามารดา (สูงสุด 4 คน)", ge=0, le=60000)
+    social_security: int = Field(0, description="ประกันสังคม", ge=0, le=9000)
     
-    # กลุ่มกระตุ้นเศรษฐกิจ
-    shopping_deduction: int = Field(0, description="ช้อปช่วยชาติ", ge=0, le=30000)
-    otop_deduction: int = Field(0, description="ซื้อสินค้า OTOP", ge=0, le=50000)
-    travel_deduction: int = Field(0, description="ท่องเที่ยวในประเทศ", ge=0, le=30000)
+    # กลุ่มกองทุนและการลงทุน
+    pension_insurance: int = Field(0, description="เบี้ยประกันบำนาญ", ge=0, le=200000)
+    provident_fund: int = Field(0, description="กองทุนสำรองเลี้ยงชีพ (PVD)", ge=0, le=500000)
+    gpf: int = Field(0, description="กองทุนบำเหน็จบำนาญข้าราชการ (กบข.)", ge=0, le=500000)
+    pvd_teacher: int = Field(0, description="กองทุนสงเคราะห์ครูโรงเรียนเอกชน", ge=0, le=500000)
+    rmf: int = Field(0, description="RMF", ge=0, le=500000)
+    
+    # กลุ่มกองทุน ESG (ใหม่ปี 2568 - แทน SSF)
+    thai_esg: int = Field(0, description="กองทุน ThaiESG", ge=0, le=300000)
+    thai_esgx_new: int = Field(0, description="กองทุน ThaiESGX (เงินใหม่)", ge=0, le=300000)
+    thai_esgx_ltf: int = Field(0, description="กองทุน ThaiESGX (สะสมจาก LTF)", ge=0, le=300000)
+    
+    # กลุ่มอื่นๆ (ใหม่ปี 2568)
+    stock_investment: int = Field(0, description="ลงทุนหุ้นจดทะเบียนที่ออกใหม่", ge=0, le=100000)
+    easy_e_receipt: int = Field(0, description="Easy e-Receipt", ge=0, le=50000)
+    home_loan_interest: int = Field(0, description="ดอกเบี้ยเงินกู้ซื้อ/สร้างบ้าน (2567-2568)", ge=0, le=100000)
+    nsf: int = Field(0, description="กองทุนการออมแห่งชาติ (กอช.)", ge=0, le=30000)
     
     # กลุ่มเงินบริจาค
     donation_general: int = Field(0, description="เงินบริจาคทั่วไป", ge=0)
-    donation_education: int = Field(0, description="เงินบริจาคเพื่อการศึกษา (2 เท่า)", ge=0)
+    donation_education: int = Field(0, description="เงินบริจาคเพื่อการศึกษา (นับ 2 เท่า)", ge=0)
+    donation_social_enterprise: int = Field(0, description="บริจาค Social Enterprise", ge=0, le=100000)
     donation_political: int = Field(0, description="บริจาคพรรคการเมือง", ge=0, le=10000)
     
     # ระดับความเสี่ยง
