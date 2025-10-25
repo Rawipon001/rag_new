@@ -112,12 +112,33 @@ async def calculate_tax_with_multiple_plans(
         # ✨ =================================================================
         print("🤖 Calculating exact investment amounts and tax savings...")
 
+        # กำหนด tiers ตามรายได้ (ต้องตรงกับ AI service)
+        gross = tax_result.gross_income
+        if gross < 600000:
+            tiers = [40000, 60000, 80000]
+        elif gross < 1000000:
+            tiers = [60000, 100000, 150000]
+        elif gross < 1500000:
+            tiers = [200000, 350000, 500000]
+        elif gross < 2000000:
+            tiers = [300000, 500000, 800000]
+        elif gross < 3000000:
+            tiers = [500000, 800000, 1200000]
+        else:
+            tiers = [800000, 1200000, 1800000]
+
         # ดึงอัตราภาษีส่วนเพิ่ม (Marginal Tax Rate) มาใช้
         marginal_rate = tax_calculator_service.get_marginal_tax_rate(tax_result.taxable_income)
 
-        # วนลูปทุกแผนที่ AI ส่งมา
-        for plan in investment_plans.get("plans", []):
-            total_investment = plan.get("total_investment", 0)
+        # วนลูปทุกแผนที่ AI ส่งมา และบังคับใช้ tier values
+        for idx, plan in enumerate(investment_plans.get("plans", [])):
+            # 🎯 บังคับใช้ total_investment ตาม tier (ไม่ใช้ค่าจาก AI)
+            if idx < len(tiers):
+                total_investment = tiers[idx]
+                plan["total_investment"] = total_investment  # Override AI's value
+            else:
+                total_investment = plan.get("total_investment", 0)
+
             calculated_total_tax_saving = 0
 
             # วนลูปทุก allocation ในแผนนั้นๆ

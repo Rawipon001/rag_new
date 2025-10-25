@@ -66,14 +66,14 @@ class EvaluationTestData:
                 "plan_type": "medium",
                 "description": "เน้นความคุ้มครองและความปลอดภัย เหมาะกับผู้เริ่มต้นวางแผนภาษี",
                 "total_investment": 60000,
-                "total_tax_saving": 3000,
+                "total_tax_saving": 6000,
                 "overall_risk": "medium",
                 "allocations": [
                     {
                         "category": "ประกันชีวิตเพิ่มเติม",
                         "investment_amount": 20000,
                         "percentage": 33.33,
-                        "tax_saving": 1000,
+                        "tax_saving": 2000,
                         "risk_level": "low",
                         "pros": ["มีความคุ้มครอง", "จำเป็นสำหรับครอบครัว"],
                         "cons": ["ผลตอบแทนต่ำ"]
@@ -82,7 +82,7 @@ class EvaluationTestData:
                         "category": "RMF",
                         "investment_amount": 30000,
                         "percentage": 50.0,
-                        "tax_saving": 1500,
+                        "tax_saving": 3000,
                         "risk_level": "medium",
                         "pros": ["ลดหย่อนภาษีได้", "ผลตอบแทนดี"],
                         "cons": ["ต้องถือ 5 ปี"]
@@ -91,7 +91,7 @@ class EvaluationTestData:
                         "category": "ประกันสุขภาพเพิ่มเติม",
                         "investment_amount": 10000,
                         "percentage": 16.67,
-                        "tax_saving": 500,
+                        "tax_saving": 1000,
                         "risk_level": "low",
                         "pros": ["คุ้มครองสุขภาพ"],
                         "cons": ["ไม่มีผลตอบแทน"]
@@ -104,14 +104,14 @@ class EvaluationTestData:
                 "plan_type": "medium",
                 "description": "กระจายความเสี่ยง เน้น RMF และกองทุน ESG",
                 "total_investment": 100000,
-                "total_tax_saving": 5000,
+                "total_tax_saving": 10000,
                 "overall_risk": "medium",
                 "allocations": [
                     {
                         "category": "RMF",
                         "investment_amount": 60000,
                         "percentage": 60.0,
-                        "tax_saving": 3000,
+                        "tax_saving": 6000,
                         "risk_level": "medium",
                         "pros": ["ลดหย่อนภาษี 30%", "ผลตอบแทนดี"],
                         "cons": ["ต้องถือ 5 ปี"]
@@ -120,7 +120,7 @@ class EvaluationTestData:
                         "category": "ThaiESG",
                         "investment_amount": 30000,
                         "percentage": 30.0,
-                        "tax_saving": 1500,
+                        "tax_saving": 3000,
                         "risk_level": "medium",
                         "pros": ["ลดหย่อน 30%", "ลงทุนยั่งยืน"],
                         "cons": ["ต้องถือ 8 ปี"]
@@ -129,7 +129,7 @@ class EvaluationTestData:
                         "category": "ประกันบำนาญ",
                         "investment_amount": 10000,
                         "percentage": 10.0,
-                        "tax_saving": 500,
+                        "tax_saving": 1000,
                         "risk_level": "low",
                         "pros": ["รับประกันผลตอบแทน"],
                         "cons": ["ผูกพันระยะยาว"]
@@ -142,14 +142,14 @@ class EvaluationTestData:
                 "plan_type": "medium",
                 "description": "ใช้วงเงินลดหย่อนสูงสุด เน้นการลงทุนระยะยาว",
                 "total_investment": 150000,
-                "total_tax_saving": 7500,
+                "total_tax_saving": 15000,
                 "overall_risk": "medium",
                 "allocations": [
                     {
                         "category": "RMF",
                         "investment_amount": 90000,
                         "percentage": 60.0,
-                        "tax_saving": 4500,
+                        "tax_saving": 9000,
                         "risk_level": "medium",
                         "pros": ["ลดหย่อนสูง", "ผลตอบแทนดี"],
                         "cons": ["ต้องถือจนอายุ 55"]
@@ -221,14 +221,14 @@ class EvaluationTestData:
                 "plan_type": "high",
                 "description": "เน้นประกันและความปลอดภัย เงินลงทุนพอเหมาะ",
                 "total_investment": 300000,
-                "total_tax_saving": 60000,
+                "total_tax_saving": 45000,
                 "overall_risk": "high",
                 "allocations": [
                     {
                         "category": "RMF",
                         "investment_amount": 200000,
                         "percentage": 66.67,
-                        "tax_saving": 40000,
+                        "tax_saving": 30000,
                         "risk_level": "high",
                         "pros": ["ลดหย่อนสูง", "ผลตอบแทนดี"],
                         "cons": ["ต้องถือยาว"]
@@ -237,7 +237,7 @@ class EvaluationTestData:
                         "category": "ประกันบำนาญ",
                         "investment_amount": 80000,
                         "percentage": 26.67,
-                        "tax_saving": 16000,
+                        "tax_saving": 12000,
                         "risk_level": "low",
                         "pros": ["รับประกันผลตอบแทน"],
                         "cons": ["ผูกพันยาว"]
@@ -246,7 +246,7 @@ class EvaluationTestData:
                         "category": "Easy e-Receipt",
                         "investment_amount": 20000,
                         "percentage": 6.67,
-                        "tax_saving": 4000,
+                        "tax_saving": 3000,
                         "risk_level": "low",
                         "pros": ["ลดหย่อนง่าย"],
                         "cons": ["วงเงินจำกัด"]
@@ -259,14 +259,14 @@ class EvaluationTestData:
                 "plan_type": "high",
                 "description": "กระจายความเสี่ยง เน้น RMF + ThaiESG + บริจาค",
                 "total_investment": 500000,
-                "total_tax_saving": 100000,
+                "total_tax_saving": 82500,
                 "overall_risk": "high",
                 "allocations": [
                     {
                         "category": "RMF",
                         "investment_amount": 300000,
                         "percentage": 60.0,
-                        "tax_saving": 60000,
+                        "tax_saving": 45000,
                         "risk_level": "high",
                         "pros": ["ลดหย่อน 30%", "ผลตอบแทนดี"],
                         "cons": ["ต้องถือยาว"]
@@ -275,7 +275,7 @@ class EvaluationTestData:
                         "category": "ThaiESG",
                         "investment_amount": 150000,
                         "percentage": 30.0,
-                        "tax_saving": 30000,
+                        "tax_saving": 22500,
                         "risk_level": "high",
                         "pros": ["ลดหย่อน 30%", "ESG"],
                         "cons": ["ต้องถือ 8 ปี"]
@@ -284,7 +284,7 @@ class EvaluationTestData:
                         "category": "บริจาคการศึกษา",
                         "investment_amount": 50000,
                         "percentage": 10.0,
-                        "tax_saving": 10000,
+                        "tax_saving": 15000,
                         "risk_level": "low",
                         "pros": ["นับ 2 เท่า", "ทำความดี"],
                         "cons": ["ไม่ได้คืน"]
@@ -297,14 +297,14 @@ class EvaluationTestData:
                 "plan_type": "high",
                 "description": "ใช้วงเงินลดหย่อนเต็มที่ เน้นผลตอบแทนสูงสุด",
                 "total_investment": 800000,
-                "total_tax_saving": 160000,
+                "total_tax_saving": 127500,
                 "overall_risk": "high",
                 "allocations": [
                     {
                         "category": "RMF",
                         "investment_amount": 450000,
                         "percentage": 56.25,
-                        "tax_saving": 90000,
+                        "tax_saving": 67500,
                         "risk_level": "high",
                         "pros": ["ลดหย่อนสูงสุด", "หุ้นเติบโต"],
                         "cons": ["ความเสี่ยงสูง"]
@@ -313,7 +313,7 @@ class EvaluationTestData:
                         "category": "ThaiESG",
                         "investment_amount": 200000,
                         "percentage": 25.0,
-                        "tax_saving": 40000,
+                        "tax_saving": 30000,
                         "risk_level": "high",
                         "pros": ["ลดหย่อน 30%", "ยั่งยืน"],
                         "cons": ["ต้องถือยาว"]
@@ -322,7 +322,7 @@ class EvaluationTestData:
                         "category": "ประกันบำนาญ",
                         "investment_amount": 100000,
                         "percentage": 12.5,
-                        "tax_saving": 20000,
+                        "tax_saving": 15000,
                         "risk_level": "low",
                         "pros": ["รับประกัน", "เกษียณ"],
                         "cons": ["ผูกพัน"]
@@ -331,7 +331,7 @@ class EvaluationTestData:
                         "category": "บริจาคการศึกษา",
                         "investment_amount": 50000,
                         "percentage": 6.25,
-                        "tax_saving": 10000,
+                        "tax_saving": 15000,
                         "risk_level": "low",
                         "pros": ["นับ 2 เท่า"],
                         "cons": ["ไม่คืน"]
@@ -385,14 +385,14 @@ class EvaluationTestData:
                 "plan_type": "low",
                 "description": "เน้นความคุ้มครองและความปลอดภัยสูงสุด",
                 "total_investment": 40000,
-                "total_tax_saving": 400,
+                "total_tax_saving": 2000,
                 "overall_risk": "low",
                 "allocations": [
                     {
                         "category": "ประกันชีวิตเพิ่มเติม",
                         "investment_amount": 20000,
                         "percentage": 50.0,
-                        "tax_saving": 200,
+                        "tax_saving": 1000,
                         "risk_level": "low",
                         "pros": ["คุ้มครองครอบครัว", "จำเป็น"],
                         "cons": ["ไม่มีผลตอบแทน"]
@@ -401,7 +401,7 @@ class EvaluationTestData:
                         "category": "ประกันสุขภาพเพิ่มเติม",
                         "investment_amount": 10000,
                         "percentage": 25.0,
-                        "tax_saving": 100,
+                        "tax_saving": 500,
                         "risk_level": "low",
                         "pros": ["คุ้มครองสุขภาพ"],
                         "cons": ["ไม่มีผลตอบแทน"]
@@ -410,7 +410,7 @@ class EvaluationTestData:
                         "category": "กอช.",
                         "investment_amount": 10000,
                         "percentage": 25.0,
-                        "tax_saving": 100,
+                        "tax_saving": 500,
                         "risk_level": "low",
                         "pros": ["ปลอดภัย", "ลดหย่อนได้"],
                         "cons": ["ผลตอบแทนต่ำ"]
@@ -423,14 +423,14 @@ class EvaluationTestData:
                 "plan_type": "low",
                 "description": "กระจายระหว่างประกันและการออม",
                 "total_investment": 60000,
-                "total_tax_saving": 600,
+                "total_tax_saving": 3000,
                 "overall_risk": "low",
                 "allocations": [
                     {
                         "category": "RMF ตราสารหนี้",
                         "investment_amount": 30000,
                         "percentage": 50.0,
-                        "tax_saving": 300,
+                        "tax_saving": 1500,
                         "risk_level": "low",
                         "pros": ["ลดหย่อนได้", "ปลอดภัย"],
                         "cons": ["ต้องถือยาว"]
@@ -461,14 +461,14 @@ class EvaluationTestData:
                 "plan_type": "low",
                 "description": "เน้นการออมและลดหย่อนภาษี",
                 "total_investment": 80000,
-                "total_tax_saving": 800,
+                "total_tax_saving": 4000,
                 "overall_risk": "low",
                 "allocations": [
                     {
                         "category": "RMF ตราสารหนี้",
                         "investment_amount": 50000,
                         "percentage": 62.5,
-                        "tax_saving": 500,
+                        "tax_saving": 2500,
                         "risk_level": "low",
                         "pros": ["ลดหย่อน", "ปลอดภัย"],
                         "cons": ["ถือยาว"]

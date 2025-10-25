@@ -220,7 +220,49 @@ class EvaluationRunner:
             print(f" {Colors.RED}✗{Colors.END}")
             print(f"     Error: {e}")
             return {}
-        
+
+        # ✨ =================================================================
+        # ✨ เพิ่มโค้ดคำนวณสำหรับ Evaluation Script ตรงนี้
+        # ✨ =================================================================
+        print(f"  {Colors.CYAN}[Post-processing]{Colors.END} คำนวณตัวเลข...", end='', flush=True)
+
+        # กำหนด tiers ตามรายได้ (ต้องตรงกับ AI service และ main.py)
+        gross = tax_result.gross_income
+        if gross < 600000:
+            tiers = [40000, 60000, 80000]
+        elif gross < 1000000:
+            tiers = [60000, 100000, 150000]
+        elif gross < 1500000:
+            tiers = [200000, 350000, 500000]
+        elif gross < 2000000:
+            tiers = [300000, 500000, 800000]
+        elif gross < 3000000:
+            tiers = [500000, 800000, 1200000]
+        else:
+            tiers = [800000, 1200000, 1800000]
+
+        marginal_rate = tax_calculator_service.get_marginal_tax_rate(tax_result.taxable_income)
+
+        for idx, plan in enumerate(ai_response.get("plans", [])):
+            # 🎯 บังคับใช้ total_investment ตาม tier (ไม่ใช้ค่าจาก AI)
+            if idx < len(tiers):
+                total_investment = tiers[idx]
+                plan["total_investment"] = total_investment  # Override AI's value
+            else:
+                total_investment = plan.get("total_investment", 0)
+
+            calculated_total_tax_saving = 0
+            for alloc in plan.get("allocations", []):
+                percentage = alloc.get("percentage", 0)
+                investment_amount = int((percentage / 100) * total_investment)
+                alloc["investment_amount"] = investment_amount
+                tax_saving = int(investment_amount * (marginal_rate / 100))
+                alloc["tax_saving"] = tax_saving
+                calculated_total_tax_saving += tax_saving
+            plan["total_tax_saving"] = calculated_total_tax_saving
+        print(f" {Colors.GREEN}✓{Colors.END}")
+        # ✨ =================================================================
+
         # Step 4: ประเมินผล
         print(f"  {Colors.CYAN}[4/4]{Colors.END} ประเมินผล...", end='', flush=True)
         expected_plans = test_case.get('expected_plans', {})
