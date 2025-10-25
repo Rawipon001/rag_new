@@ -74,8 +74,8 @@
             "category_match": false
           },
           {
-            "investment_accuracy": 33.333333333333336,
-            "tax_saving_accuracy": 66.66666666666667,
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
             "category_match": false
           },
           {
@@ -84,8 +84,8 @@
             "category_match": false
           }
         ],
-        "average_investment_accuracy": 11.111111111111112,
-        "average_tax_saving_accuracy": 22.222222222222225
+        "average_investment_accuracy": 0.0,
+        "average_tax_saving_accuracy": 0.0
       }
     },
     "plan_2": {
@@ -205,12 +205,12 @@
             "category_match": true
           },
           {
-            "investment_accuracy": 100.0,
+            "investment_accuracy": 0,
             "tax_saving_accuracy": 0,
-            "category_match": false
+            "category_match": true
           }
         ],
-        "average_investment_accuracy": 33.333333333333336,
+        "average_investment_accuracy": 0.0,
         "average_tax_saving_accuracy": 0.0
       }
     }

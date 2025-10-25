@@ -75,58 +75,77 @@ async def calculate_tax_with_multiple_plans(
     try:
         # 1. คำนวณภาษี
         tax_result = tax_calculator_service.calculate_tax(request)
-        
-        # 2. ดึงข้อมูลจาก Qdrant RAG
+
+        # 2. ดึงข้อมูลจาก Qdrant RAG (ส่วนนี้เหมือนเดิม)
         context = "ไม่มีข้อมูลจาก RAG"
-        
         if rag_service.is_available():
             query = f"""
-            รายได้ {request.gross_income} บาท 
+            รายได้ {request.gross_income} บาท
             ระดับความเสี่ยง {request.risk_tolerance}
             ต้องการวางแผนภาษีและลงทุน
             มีครอบครัว บุตร บิดามารดา
             """
-            
             try:
                 retrieved_docs = await rag_service.retrieve_relevant_documents(
-                    query, 
+                    query,
                     k=settings.rag_top_k
                 )
-                
                 if retrieved_docs:
-                    context_parts = []
-                    for doc in retrieved_docs:
-                        if hasattr(doc, 'page_content'):
-                            context_parts.append(doc.page_content)
-                        elif hasattr(doc, 'content'):
-                            context_parts.append(doc.content)
-                        elif isinstance(doc, str):
-                            context_parts.append(doc)
-                    
+                    context_parts = [doc.page_content for doc in retrieved_docs if hasattr(doc, 'page_content')]
                     if context_parts:
                         context = "\n\n".join(context_parts)
                         print(f"✅ RAG Context: {len(context)} characters")
                 else:
                     print("⚠️ RAG: No documents retrieved")
-                    
             except Exception as e:
                 print(f"⚠️ RAG Error: {e}")
-                import traceback
-                traceback.print_exc()
         else:
             print("⚠️ RAG not available - using AI without context")
-        
-        # 3. เรียก AI เพื่อสร้างหลายแผน
+
+        # 3. เรียก AI เพื่อสร้างหลายแผน (จะได้แผนที่มีแค่ percentage)
         investment_plans = await ai_service.generate_recommendations(
             request, tax_result, context
         )
-        
-        # 4. Return response
+
+        # ✨ =================================================================
+        # ✨ ขั้นตอนที่ 4: คำนวณตัวเลขด้วย Python เพื่อความแม่นยำ 100%
+        # ✨ =================================================================
+        print("🤖 Calculating exact investment amounts and tax savings...")
+
+        # ดึงอัตราภาษีส่วนเพิ่ม (Marginal Tax Rate) มาใช้
+        marginal_rate = tax_calculator_service.get_marginal_tax_rate(tax_result.taxable_income)
+
+        # วนลูปทุกแผนที่ AI ส่งมา
+        for plan in investment_plans.get("plans", []):
+            total_investment = plan.get("total_investment", 0)
+            calculated_total_tax_saving = 0
+
+            # วนลูปทุก allocation ในแผนนั้นๆ
+            for alloc in plan.get("allocations", []):
+                percentage = alloc.get("percentage", 0)
+
+                # คำนวณ investment_amount จาก percentage
+                investment_amount = int((percentage / 100) * total_investment)
+                alloc["investment_amount"] = investment_amount
+
+                # คำนวณ tax_saving จาก investment_amount
+                tax_saving = int(investment_amount * (marginal_rate / 100))
+                alloc["tax_saving"] = tax_saving
+
+                calculated_total_tax_saving += tax_saving
+
+            # อัปเดต total_tax_saving ของแผนให้ถูกต้องตามที่คำนวณได้จริง
+            plan["total_tax_saving"] = calculated_total_tax_saving
+
+        print("✅ Calculation complete.")
+        # ✨ =================================================================
+
+        # 5. Return response (ตอนนี้จะมีตัวเลขที่ถูกต้องครบถ้วนแล้ว)
         return TaxCalculationResponse(
             tax_result=tax_result,
             investment_plans=investment_plans
         )
-        
+
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback

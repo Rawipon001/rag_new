@@ -75,9 +75,9 @@ class TaxCalculationResult(BaseModel):
 class AllocationItem(BaseModel):
     """รายการการจัดสรรในแต่ละแผน"""
     category: str = Field(..., description="ประเภทการลงทุน")
-    investment_amount: int = Field(..., description="จำนวนเงิน")
+    investment_amount: Optional[int] = Field(None, description="จำนวนเงิน")
     percentage: float = Field(..., description="สัดส่วน %")
-    tax_saving: int = Field(..., description="ภาษีที่ประหยัด")
+    tax_saving: Optional[int] = Field(None, description="ภาษีที่ประหยัด")
     risk_level: str = Field(..., description="ระดับความเสี่ยง")
     pros: List[str] = Field(..., description="ข้อดี")
     cons: List[str] = Field(..., description="ข้อเสีย")

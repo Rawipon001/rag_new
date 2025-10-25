@@ -173,37 +173,22 @@ class AIService:
       "overall_risk": "{risk_level}",
       "allocations": [
         {{
-          "category": "ประกันชีวิต",
-          "investment_amount": 50000,
-          "percentage": 25.0,
-          "tax_saving": 5000,
+          "category": "ประกันชีวิตและสุขภาพ",
+          "percentage": 40.0,
           "risk_level": "low",
-          "pros": ["มีความคุ้มครองชีวิต", "ความเสี่ยงต่ำ", "จำเป็นสำหรับทุกคน"],
-          "cons": ["ผลตอบแทนต่ำ 2-4%"]
-        }},
-        {{
-          "category": "ประกันสุขภาพ",
-          "investment_amount": 25000,
-          "percentage": 12.5,
-          "tax_saving": 2500,
-          "risk_level": "low",
-          "pros": ["คุ้มครองสุขภาพ", "จำเป็นสำหรับทุกคน"],
-          "cons": ["ไม่มีผลตอบแทน"]
+          "pros": ["มีความคุ้มครองชีวิตและสุขภาพ", "ความเสี่ยงต่ำ", "จำเป็นสำหรับทุกคน"],
+          "cons": ["ผลตอบแทนต่ำ", "เบี้ยเพิ่มตามอายุ"]
         }},
         {{
           "category": "ประกันบำนาญ",
-          "investment_amount": 50000,
           "percentage": 25.0,
-          "tax_saving": 5000,
           "risk_level": "low",
           "pros": ["รับประกันผลตอบแทน 3-4%", "เหมาะกับวัยใกล้เกษียณ"],
           "cons": ["ผูกพันยาว", "ถอนก่อนเวลาขาดทุน"]
         }},
         {{
           "category": "RMF ตราสารหนี้/ผสม",
-          "investment_amount": 75000,
-          "percentage": 37.5,
-          "tax_saving": 7500,
+          "percentage": 35.0,
           "risk_level": "{risk_level}",
           "pros": ["ลดหย่อนภาษีสูง", "ผลตอบแทนดีกว่าเงินฝาก"],
           "cons": ["ต้องถือจนอายุ 55 ปี หรือ 5 ปี", "มีความเสี่ยงตามตลาด"]
@@ -221,45 +206,28 @@ class AIService:
       "allocations": [
         {{
           "category": "RMF",
-          "investment_amount": 200000,
           "percentage": 40.0,
-          "tax_saving": 20000,
           "risk_level": "{risk_level}",
           "pros": ["ลดหย่อนภาษีสูงสุด 30%", "เหมาะกับการเกษียณ"],
           "cons": ["ต้องซื้อทุกปี", "ถอนก่อนเวลามีภาษีเพิ่ม"]
         }},
         {{
           "category": "ThaiESG",
-          "investment_amount": 100000,
-          "percentage": 20.0,
-          "tax_saving": 10000,
+          "percentage": 25.0,
           "risk_level": "{risk_level}",
           "pros": ["ยืดหยุ่นกว่า RMF", "ลงทุนใน ESG", "ยกเว้น 30%"],
           "cons": ["ต้องถือครบ 8 ปี", "กองทุนใหม่"]
         }},
         {{
-          "category": "ประกันชีวิต",
-          "investment_amount": 70000,
-          "percentage": 14.0,
-          "tax_saving": 7000,
+          "category": "ประกันชีวิตและสุขภาพ",
+          "percentage": 20.0,
           "risk_level": "low",
-          "pros": ["ความคุ้มครองชีวิต", "ลดหย่อนภาษีได้"],
-          "cons": ["ผลตอบแทนต่ำ"]
-        }},
-        {{
-          "category": "ประกันสุขภาพ",
-          "investment_amount": 25000,
-          "percentage": 5.0,
-          "tax_saving": 2500,
-          "risk_level": "low",
-          "pros": ["จำเป็นสำหรับทุกคน"],
-          "cons": ["เบี้ยเพิ่มตามอายุ"]
+          "pros": ["ความคุ้มครองชีวิตและสุขภาพ", "ลดหย่อนภาษีได้"],
+          "cons": ["ผลตอบแทนต่ำ", "เบี้ยเพิ่มตามอายุ"]
         }},
         {{
           "category": "ประกันบำนาญ",
-          "investment_amount": 105000,
-          "percentage": 21.0,
-          "tax_saving": 10500,
+          "percentage": 15.0,
           "risk_level": "low",
           "pros": ["รับประกันผลตอบแทน", "มีรายได้หลังเกษียณ"],
           "cons": ["ผูกพันยาว"]
@@ -277,54 +245,42 @@ class AIService:
       "allocations": [
         {{
           "category": "RMF (ใช้วงเงินเต็มที่)",
-          "investment_amount": {int(min(max_rmf, suggested_max * 0.35))},
           "percentage": 35.0,
-          "tax_saving": {int(min(max_rmf, suggested_max * 0.35) * marginal_rate / 100)},
           "risk_level": "{risk_level}",
           "pros": ["ลดหย่อนภาษีสูงสุด", "ผลตอบแทนดี"],
           "cons": ["ต้องซื้อทุกปี", "ความเสี่ยงตามตลาด"]
         }},
         {{
           "category": "ThaiESG/ThaiESGX",
-          "investment_amount": {int(min(max_thai_esg, suggested_max * 0.20))},
-          "percentage": 20.0,
-          "tax_saving": {int(min(max_thai_esg, suggested_max * 0.20) * marginal_rate / 100)},
+          "percentage": 25.0,
           "risk_level": "{risk_level}",
           "pros": ["ยกเว้นภาษี 30%", "ลงทุนใน ESG", "ยืดหยุ่น"],
           "cons": ["ต้องถือ 8 ปี", "กองทุนใหม่"]
         }},
         {{
           "category": "กองทุนสำรองเลี้ยงชีพ (PVD)",
-          "investment_amount": {int(min(max_pvd, suggested_max * 0.20))},
           "percentage": 20.0,
-          "tax_saving": {int(min(max_pvd, suggested_max * 0.20) * marginal_rate / 100)},
           "risk_level": "medium",
           "pros": ["บริษัทจ่ายเพิ่มให้", "ผลตอบแทนมั่นคง"],
           "cons": ["ต้องเป็นพนักงาน", "ถอนยาก"]
         }},
         {{
           "category": "ประกันบำนาญ",
-          "investment_amount": {int(min(max_pension, suggested_max * 0.12))},
-          "percentage": 12.0,
-          "tax_saving": {int(min(max_pension, suggested_max * 0.12) * marginal_rate / 100)},
+          "percentage": 10.0,
           "risk_level": "low",
           "pros": ["รับประกันผลตอบแทน", "ลดหย่อนได้ 15%"],
           "cons": ["ผูกพันยาว"]
         }},
         {{
           "category": "ประกันชีวิต + สุขภาพ",
-          "investment_amount": {int(suggested_max * 0.08)},
-          "percentage": 8.0,
-          "tax_saving": {int(suggested_max * 0.08 * marginal_rate / 100)},
+          "percentage": 7.0,
           "risk_level": "low",
           "pros": ["จำเป็นต้องมี", "ลดหย่อนภาษีได้"],
           "cons": ["ผลตอบแทนต่ำ"]
         }},
         {{
           "category": "Easy e-Receipt",
-          "investment_amount": {int(min(50000, suggested_max * 0.05))},
-          "percentage": 5.0,
-          "tax_saving": {int(min(50000, suggested_max * 0.05) * marginal_rate / 100)},
+          "percentage": 3.0,
           "risk_level": "low",
           "pros": ["ใช้จ่ายปกติ", "ลดหย่อนได้ 50,000", "ไม่ต้องลงทุนเพิ่ม"],
           "cons": ["ต้องใช้จ่ายผ่าน e-payment"]
@@ -337,10 +293,10 @@ class AIService:
 
 **หมายเหตุสำคัญ:**
 - ตัวเลขในตัวอย่างเป็นเพียงแนวทาง คุณต้องคำนวณให้เหมาะสมกับรายได้จริง
-- แต่ละ allocation ต้องมีครบทุก field: category, investment_amount, percentage, tax_saving, risk_level, pros, cons
+- แต่ละ allocation ต้องมีครบทุก field: category, percentage, risk_level, pros, cons
+- **ห้ามใส่ investment_amount และ tax_saving ใน allocations** (ระบบจะคำนวณให้อัตโนมัติ)
 - pros และ cons ต้องเป็น array ของ string
-- percentage รวมทั้งหมดต้องเท่ากับ 100 (หรือใกล้เคียง 99-101)
-- tax_saving = investment_amount × (อัตราภาษีส่วนเพิ่ม / 100)
+- **percentage รวมทั้งหมดในแต่ละแผนต้องใกล้เคียง 100** (ควรอยู่ในช่วง 99-101)
 - **อย่าใช้ SSF** เพราะยกเลิกแล้วในปี 2568 ใช้ ThaiESG/ThaiESGX แทน
 - แผนที่ 3 สำหรับรายได้ 1,500,000+ ควรมีเงินบริจาคการศึกษา
 
@@ -399,8 +355,7 @@ class AIService:
                     raise ValueError(f"Plan {i+1} has empty allocations")
                 
                 for j, alloc in enumerate(plan["allocations"]):
-                    required_alloc_fields = ["category", "investment_amount", "percentage", 
-                                            "tax_saving", "risk_level", "pros", "cons"]
+                    required_alloc_fields = ["category", "percentage", "risk_level", "pros", "cons"]
                     for field in required_alloc_fields:
                         if field not in alloc:
                             raise ValueError(f"Plan {i+1}, Allocation {j+1} missing field: {field}")

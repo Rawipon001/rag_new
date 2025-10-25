@@ -69,22 +69,22 @@
       "allocation_metrics": {
         "individual_scores": [
           {
-            "investment_accuracy": 50.0,
+            "investment_accuracy": 0,
             "tax_saving_accuracy": 0,
             "category_match": false
           },
           {
-            "investment_accuracy": 50.0,
+            "investment_accuracy": 0,
             "tax_saving_accuracy": 0,
             "category_match": false
           },
           {
-            "investment_accuracy": 50.0,
+            "investment_accuracy": 0,
             "tax_saving_accuracy": 0,
             "category_match": false
           }
         ],
-        "average_investment_accuracy": 50.0,
+        "average_investment_accuracy": 0.0,
         "average_tax_saving_accuracy": 0.0
       }
     },
@@ -126,18 +126,18 @@
       },
       "structural_metrics": {
         "expected_allocation_count": 3,
-        "actual_allocation_count": 3,
+        "actual_allocation_count": 4,
         "has_correct_structure": true
       },
       "allocation_metrics": {
         "individual_scores": [
           {
-            "investment_accuracy": 33.333333333333336,
+            "investment_accuracy": 0,
             "tax_saving_accuracy": 0,
             "category_match": false
           },
           {
-            "investment_accuracy": 50.0,
+            "investment_accuracy": 0,
             "tax_saving_accuracy": 0,
             "category_match": false
           },
@@ -147,7 +147,7 @@
             "category_match": false
           }
         ],
-        "average_investment_accuracy": 27.777777777777782,
+        "average_investment_accuracy": 0.0,
         "average_tax_saving_accuracy": 0.0
       }
     },
@@ -195,7 +195,7 @@
       "allocation_metrics": {
         "individual_scores": [
           {
-            "investment_accuracy": 80.0,
+            "investment_accuracy": 0,
             "tax_saving_accuracy": 0,
             "category_match": false
           },
@@ -210,7 +210,7 @@
             "category_match": false
           }
         ],
-        "average_investment_accuracy": 26.666666666666668,
+        "average_investment_accuracy": 0.0,
         "average_tax_saving_accuracy": 0.0
       }
     }

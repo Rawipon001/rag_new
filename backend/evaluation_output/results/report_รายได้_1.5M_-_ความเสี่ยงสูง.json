@@ -20,7 +20,7 @@
       "avg_bertscore_precision": 0.9403361082077026,
       "avg_bertscore_recall": 0.9138372540473938,
       "avg_bertscore_f1": 0.9268184304237366,
-      "avg_avg_allocation_text_similarity": 0.3333333333333333
+      "avg_avg_allocation_text_similarity": 0.38888888888888884
     },
     "avg_numeric_accuracy": 52.63888888888889
   },
@@ -63,19 +63,19 @@
       },
       "structural_metrics": {
         "expected_allocation_count": 3,
-        "actual_allocation_count": 3,
+        "actual_allocation_count": 4,
         "has_correct_structure": true
       },
       "allocation_metrics": {
         "individual_scores": [
           {
-            "investment_accuracy": 100.0,
-            "tax_saving_accuracy": 75.0,
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
             "category_match": false
           },
           {
-            "investment_accuracy": 93.75,
-            "tax_saving_accuracy": 82.8125,
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
             "category_match": false
           },
           {
@@ -84,8 +84,8 @@
             "category_match": false
           }
         ],
-        "average_investment_accuracy": 64.58333333333333,
-        "average_tax_saving_accuracy": 52.604166666666664
+        "average_investment_accuracy": 0.0,
+        "average_tax_saving_accuracy": 0.0
       }
     },
     "plan_2": {
@@ -126,19 +126,19 @@
       },
       "structural_metrics": {
         "expected_allocation_count": 3,
-        "actual_allocation_count": 3,
+        "actual_allocation_count": 5,
         "has_correct_structure": true
       },
       "allocation_metrics": {
         "individual_scores": [
           {
-            "investment_accuracy": 100.0,
-            "tax_saving_accuracy": 75.0,
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
             "category_match": true
           },
           {
-            "investment_accuracy": 66.66666666666667,
-            "tax_saving_accuracy": 33.333333333333336,
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
             "category_match": true
           },
           {
@@ -147,8 +147,8 @@
             "category_match": false
           }
         ],
-        "average_investment_accuracy": 55.555555555555564,
-        "average_tax_saving_accuracy": 36.111111111111114
+        "average_investment_accuracy": 0.0,
+        "average_tax_saving_accuracy": 0.0
       }
     },
     "plan_3": {
@@ -169,7 +169,7 @@
         "bertscore_precision": 0.9306573271751404,
         "bertscore_recall": 0.9243994951248169,
         "bertscore_f1": 0.9275178909301758,
-        "avg_allocation_text_similarity": 0.3333333333333333
+        "avg_allocation_text_similarity": 0.5
       },
       "numeric_metrics": {
         "total_investment": {
@@ -189,29 +189,34 @@
       },
       "structural_metrics": {
         "expected_allocation_count": 4,
-        "actual_allocation_count": 3,
+        "actual_allocation_count": 5,
         "has_correct_structure": true
       },
       "allocation_metrics": {
         "individual_scores": [
           {
-            "investment_accuracy": 100.0,
-            "tax_saving_accuracy": 75.0,
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
             "category_match": true
           },
           {
-            "investment_accuracy": 50.0,
-            "tax_saving_accuracy": 12.5,
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
             "category_match": true
           },
           {
-            "investment_accuracy": 50.0,
-            "tax_saving_accuracy": 62.5,
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
+            "category_match": false
+          },
+          {
+            "investment_accuracy": 0,
+            "tax_saving_accuracy": 0,
             "category_match": false
           }
         ],
-        "average_investment_accuracy": 66.66666666666667,
-        "average_tax_saving_accuracy": 50.0
+        "average_investment_accuracy": 0.0,
+        "average_tax_saving_accuracy": 0.0
       }
     }
   }

@@ -231,10 +231,10 @@ class AIServiceForEvaluation:
 ```
 
 **หมายเหตุสำคัญ:**
-- แต่ละ allocation ต้องมีครบทุก field: category, investment_amount, percentage, tax_saving, risk_level, pros, cons
+- แต่ละ allocation ต้องมีครบทุก field: category, percentage, risk_level, pros, cons
+- **ห้ามใส่ investment_amount และ tax_saving ใน allocations** (ระบบจะคำนวณให้อัตโนมัติ)
 - pros และ cons ต้องเป็น array ของ string (อย่างน้อย 2-3 รายการ)
-- percentage รวมทั้งหมดต้องเท่ากับ 100 (หรือใกล้เคียง 99-101)
-- tax_saving = investment_amount × (อัตราภาษีส่วนเพิ่ม / 100)
+- **percentage รวมทั้งหมดในแต่ละแผนต้องใกล้เคียง 100** (ควรอยู่ในช่วง 99-101)
 - **อย่าใช้ SSF** เพราะยกเลิกแล้วในปี 2568 ใช้ ThaiESG/ThaiESGX แทน
 
 ตอบเป็น JSON เท่านั้น ห้ามมี markdown หรือข้อความอื่น:"""
@@ -382,10 +382,9 @@ class AIServiceForEvaluation:
         if len(result["plans"]) != 3:
             raise ValueError(f"Expected 3 plans, got {len(result['plans'])}")
         
-        required_plan_fields = ["plan_id", "plan_name", "plan_type", "description", 
+        required_plan_fields = ["plan_id", "plan_name", "plan_type", "description",
                                "total_investment", "total_tax_saving", "overall_risk", "allocations"]
-        required_alloc_fields = ["category", "investment_amount", "percentage", 
-                                "tax_saving", "risk_level", "pros", "cons"]
+        required_alloc_fields = ["category", "percentage", "risk_level", "pros", "cons"]
         
         for i, plan in enumerate(result["plans"]):
             for field in required_plan_fields:
