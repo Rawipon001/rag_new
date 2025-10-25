@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.results
 
 # Python
 __pycache__/
@@ -13,6 +14,7 @@ venv/
 env/
 ENV/
 .venv
+evaluation_output/
 
 # Node.js
 node_modules/
