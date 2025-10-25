@@ -1,0 +1,14 @@
+{
+  "total_test_cases": 1,
+  "text_metrics": {
+    "avg_rouge1_f1": 0.8888888888888888,
+    "avg_rouge2_f1": 0.0,
+    "avg_rougeL_f1": 0.8888888888888888,
+    "avg_bleu4": 0.5751525240731392
+  },
+  "numeric_metrics": {
+    "avg_accuracy": 0.0,
+    "min_accuracy": 0.0,
+    "max_accuracy": 0.0
+  }
+}
