@@ -127,8 +127,10 @@ async def calculate_tax_with_multiple_plans(
         else:
             tiers = [800000, 1200000, 1800000]
 
-        # ดึงอัตราภาษีส่วนเพิ่ม (Marginal Tax Rate) มาใช้
-        marginal_rate = tax_calculator_service.get_marginal_tax_rate(tax_result.taxable_income)
+        # 🔧 FIX: คำนวณ tax saving อย่างถูกต้องตามหลักภาษี
+        # Tax Saving = ภาษีที่ลดได้จากการลงทุน
+        # = (ภาษีโดยไม่ลงทุน) - (ภาษีถ้าลงทุน)
+        # = Investment × Marginal Rate ของรายได้ที่เพิ่มขึ้น
 
         # วนลูปทุกแผนที่ AI ส่งมา และบังคับใช้ tier values
         for idx, plan in enumerate(investment_plans.get("plans", [])):
@@ -139,9 +141,15 @@ async def calculate_tax_with_multiple_plans(
             else:
                 total_investment = plan.get("total_investment", 0)
 
-            calculated_total_tax_saving = 0
+            # 🔧 คำนวณ total tax saving ของแผนทั้งหมดก่อน
+            # ใช้ total_investment เพื่อหา marginal rate ที่ถูกต้อง
+            taxable_without_total_investment = tax_result.taxable_income + total_investment
+            marginal_rate_for_total = tax_calculator_service.get_marginal_tax_rate(
+                taxable_without_total_investment
+            )
+            calculated_total_tax_saving = int(total_investment * (marginal_rate_for_total / 100))
 
-            # วนลูปทุก allocation ในแผนนั้นๆ
+            # แจกจ่าย tax saving ให้แต่ละ allocation ตามสัดส่วน
             for alloc in plan.get("allocations", []):
                 percentage = alloc.get("percentage", 0)
 
@@ -149,11 +157,9 @@ async def calculate_tax_with_multiple_plans(
                 investment_amount = int((percentage / 100) * total_investment)
                 alloc["investment_amount"] = investment_amount
 
-                # คำนวณ tax_saving จาก investment_amount
-                tax_saving = int(investment_amount * (marginal_rate / 100))
+                # แจกจ่าย tax_saving ตามสัดส่วน percentage
+                tax_saving = int((percentage / 100) * calculated_total_tax_saving)
                 alloc["tax_saving"] = tax_saving
-
-                calculated_total_tax_saving += tax_saving
 
             # อัปเดต total_tax_saving ของแผนให้ถูกต้องตามที่คำนวณได้จริง
             plan["total_tax_saving"] = calculated_total_tax_saving

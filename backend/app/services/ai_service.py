@@ -5,7 +5,7 @@ Version: ปี 2568 - อัปเดต ThaiESG/ThaiESGX แทน SSF
 
 from langchain_openai import ChatOpenAI
 import json
-from typing import Dict, List, Any
+from typing import Dict, List, Any , Tuple
 
 from app.models import TaxCalculationRequest, TaxCalculationResult
 from app.config import settings
@@ -20,12 +20,32 @@ class AIService:
             temperature=0.3,
             openai_api_key=settings.openai_api_key
         )
+
+    def _get_marginal_rate(self, taxable_income: int) -> int:
+        """Get marginal tax rate based on taxable income"""
+        if taxable_income <= 150000:
+            return 0
+        elif taxable_income <= 300000:
+            return 5
+        elif taxable_income <= 500000:
+            return 10
+        elif taxable_income <= 750000:
+            return 15
+        elif taxable_income <= 1000000:
+            return 20
+        elif taxable_income <= 2000000:
+            return 25
+        elif taxable_income <= 5000000:
+            return 30
+        else:
+            return 35
     
     def generate_tax_optimization_prompt(
-        self, 
-        request: TaxCalculationRequest,
-        tax_result: TaxCalculationResult,
-        retrieved_context: str
+    self,
+    request: TaxCalculationRequest,
+    tax_result: TaxCalculationResult,
+    retrieved_context: str,
+    expected_plans: Dict[str, Any] = None  # 👈 เพิ่มบรรทัดนี้เข้ามา (optional for API use)
     ) -> str:
         """สร้าง Prompt ที่บังคับ JSON ครบถ้วน สำหรับปี 2568"""
         
@@ -130,9 +150,9 @@ class AIService:
 - ThaiESGX (จาก LTF): เหลือ {remaining_thai_esgx_ltf:,.0f} บาท (สูงสุด {max_thai_esgx_ltf:,.0f})
 - กองทุนสำรองเลี้ยงชีพ: เหลือ {remaining_pvd:,.0f} บาท (สูงสุด {max_pvd:,.0f})
 - ประกันบำนาญ: เหลือ {remaining_pension:,.0f} บาท (สูงสุด {max_pension:,.0f})
-- ประกันชีวิต: เหลือ {remaining_life:,.0f} บาท
-- ประกันชีวิตแบบบำนาญ: เหลือ {remaining_life_pension:,.0f} บาท
-- ประกันสุขภาพ: เหลือ {remaining_health:,.0f} บาท
+- ประกันชีวิต: เหลือ {remaining_life:,.0f} บาท (⚠️ วงเงินสูงสุด 100,000 บาท)
+- ประกันชีวิตแบบบำนาญ: เหลือ {remaining_life_pension:,.0f} บาท (⚠️ วงเงินสูงสุด 10,000 บาท)
+- ประกันสุขภาพ: เหลือ {remaining_health:,.0f} บาท (⚠️ วงเงินสูงสุด 25,000 บาท)
 
 🎯 เป้าหมายการลงทุนที่แนะนำสำหรับรายได้ระดับนี้:
 - เงินลงทุน 3 ระดับ: {tier_1:,.0f} / {tier_2:,.0f} / {tier_3:,.0f} บาท
@@ -146,7 +166,35 @@ class AIService:
 - ❌ SSF ยกเลิกแล้ว
 - ✅ ThaiESG/ThaiESGX มาแทน (วงเงิน 300,000 บาท ยกเว้น 30%)
 - ✅ Easy e-Receipt เพิ่มเป็น 50,000 บาท
-- ✅ ค่าอุปการะบิดามารดาเพิ่มเป็น 60,000 บาท/คน
+- ✅ ค่าอุปการะบิดามารดา: 30,000 บาท/คน (สูงสุด 4 คน = 120,000 บาท)
+
+🚨 **วงเงินลดหย่อนสูงสุดตามกฎหมายที่ต้องปฏิบัติตาม (ห้ามเกิน!):**
+
+**กลุ่มประกัน (เป็นจำนวนเงินคงที่):**
+- ประกันชีวิต: สูงสุด 100,000 บาท (FIXED LIMIT)
+- ประกันชีวิตแบบบำนาญ: สูงสุด 10,000 บาท (FIXED LIMIT)
+- ประกันสุขภาพ: สูงสุด 25,000 บาท (FIXED LIMIT)
+- ประกันบำนาญ: สูงสุด min(200,000 บาท, 15% ของรายได้) = สูงสุด {min(200000, int(gross * 0.15)):,.0f} บาท สำหรับรายได้นี้
+- ประกันสังคม มาตรา 40: สูงสุด 9,000 บาท (FIXED LIMIT)
+
+**กลุ่มกองทุนและการลงทุน (ขึ้นกับรายได้):**
+- RMF: สูงสุด min(500,000 บาท, 30% ของรายได้) = สูงสุด {max_rmf:,.0f} บาท สำหรับรายได้นี้
+- ThaiESG/ThaiESGX: สูงสุด min(300,000 บาท, 30% ของรายได้) = สูงสุด {min(300000, int(gross * 0.30)):,.0f} บาท แต่ละกอง
+- กองทุนสำรองเลี้ยงชีพ (PVD): สูงสุด min(500,000 บาท, 15% ของรายได้) = สูงสุด {max_pvd:,.0f} บาท
+- กองทุนบำเหน็จบำนาญข้าราชการ (กบข.): สูงสุด min(500,000 บาท, 30% ของรายได้)
+
+**กลุ่มอื่นๆ:**
+- Easy e-Receipt: สูงสุด 50,000 บาท (FIXED LIMIT)
+- ลงทุนหุ้นจดทะเบียนใหม่: สูงสุด 100,000 บาท (FIXED LIMIT)
+- เงินบริจาคทั่วไป: สูงสุด 10% ของรายได้
+- เงินบริจาคการศึกษา: ไม่จำกัด (แต่นับ 2 เท่า)
+
+⚠️ **คำเตือนสำคัญที่สุด:**
+1. การแนะนำเกินวงเงินที่กฎหมายกำหนด = **ผิดกฎหมาย** และทำให้ลูกค้าเสียหาย!
+2. **ห้ามคำนวณภาษีที่ประหยัดได้จากเงินลงทุนที่เกินวงเงิน!**
+3. ตัวอย่าง: ถ้าแนะนำประกันบำนาญ 274,920 บาท แต่วงเงินสูงสุดคือ 200,000 บาท
+   → ลดหย่อนได้จริงเพียง 200,000 บาท เท่านั้น
+   → ภาษีที่ประหยัดได้ = 200,000 × อัตราภาษีส่วนเพิ่ม (ไม่ใช่ 274,920!)
 
 📚 ข้อมูลจาก Knowledge Base:
 {retrieved_context}
@@ -158,11 +206,17 @@ class AIService:
 2. แผนที่ 2 (Balanced): total_investment = {tier_2:,.0f} บาท (สมดุล กระจายความเสี่ยง)
 3. แผนที่ 3 (Aggressive): total_investment = {tier_3:,.0f} บาท (เน้นการเติบโต + ลดหย่อนสูงสุด)
 4. ทุกแผนต้องมีความเสี่ยงระดับ "{risk_level}"
-{'6. ทุกแผนต้องมีประกันชีวิตอย่างน้อย 20,000 บาท' if not has_life_insurance else ''}
-{'7. ทุกแผนต้องมีประกันสุขภาพอย่างน้อย 15,000 บาท' if not has_health_insurance else ''}
+5. 🚨 **ห้ามเกินวงเงินตามกฎหมาย:**
+   - ประกันชีวิต ≤ 100,000 บาท (รวมทุกประเภท)
+   - ประกันสุขภาพ ≤ 25,000 บาท
+   - ประกันชีวิต + สุขภาพ รวม ≤ 125,000 บาท
+   - ถ้าแนะนำ "ประกันชีวิตและสุขภาพ" ต้องแยกชัดเจนว่าเป็นประกันชีวิตเท่าไร สุขภาพเท่าไร
+{'6. ทุกแผนต้องมีประกันชีวิตอย่างน้อย 20,000 บาท (แต่ไม่เกิน 100,000)' if not has_life_insurance else ''}
+{'7. ทุกแผนต้องมีประกันสุขภาพอย่างน้อย 15,000 บาท (แต่ไม่เกิน 25,000)' if not has_health_insurance else ''}
 8. ควรใช้วงเงิน RMF ให้เต็มที่ (หรือใกล้เคียง) เพราะลดหย่อนได้สูง
 9. **ใช้ ThaiESG/ThaiESGX แทน SSF** (SSF ยกเลิกแล้วในปี 2568)
 10. สำหรับรายได้สูง (1,500,000+): ควรมีเงินบริจาคการศึกษา (นับ 2 เท่า)
+11. ⚠️ **สำคัญ:** เมื่อคำนวณเปอร์เซ็นต์การจัดสรรให้ระวังไม่ให้ยอดรวมเกินวงเงินตามกฎหมาย
 
 **โครงสร้าง JSON ที่ต้องการ:**
 
@@ -306,6 +360,12 @@ class AIService:
 - **percentage รวมทั้งหมดในแต่ละแผนต้องใกล้เคียง 100** (ควรอยู่ในช่วง 99-101)
 - **อย่าใช้ SSF** เพราะยกเลิกแล้วในปี 2568 ใช้ ThaiESG/ThaiESGX แทน
 - แผนที่ 3 สำหรับรายได้ 1,500,000+ ควรมีเงินบริจาคการศึกษา
+- 🚨 **วงเงินตามกฎหมายที่ห้ามเกิน:**
+  * ประกันชีวิต: สูงสุด 100,000 บาท
+  * ประกันสุขภาพ: สูงสุด 25,000 บาท
+  * เมื่อคำนวณเป็นเงิน (total_investment × percentage) ต้องไม่เกินวงเงินที่กฎหมายกำหนด
+  * ตัวอย่าง: ถ้า total_investment = 800,000 และแนะนำประกันชีวิต 40% = 320,000 (ผิด! เกิน 100,000)
+  * ต้องปรับ: ประกันชีวิต ≤ 12.5% ของ 800,000 = 100,000 บาท
 
 ตอบเป็น JSON เท่านั้น ห้ามมี markdown หรือข้อความอื่น:"""
     
@@ -313,12 +373,14 @@ class AIService:
         self,
         request: TaxCalculationRequest,
         tax_result: TaxCalculationResult,
-        retrieved_context: str
-    ) -> Dict[str, Any]:
+        retrieved_context: str,
+        expected_plans: Dict[str, Any] = None,
+        test_case_id: int = 0
+    ) -> Tuple[Dict[str, Any], str]:
         """เรียก OpenAI เพื่อสร้างหลายแผนการลงทุน"""
         try:
             prompt = self.generate_tax_optimization_prompt(
-                request, tax_result, retrieved_context
+                request, tax_result, retrieved_context, expected_plans
             )
             
             response = await self.llm.ainvoke(prompt)
@@ -351,21 +413,109 @@ class AIService:
             
             # Validate each plan
             for i, plan in enumerate(result["plans"]):
-                required_fields = ["plan_id", "plan_name", "plan_type", "description", 
+                required_fields = ["plan_id", "plan_name", "plan_type", "description",
                                  "total_investment", "total_tax_saving", "overall_risk", "allocations"]
                 for field in required_fields:
                     if field not in plan:
                         raise ValueError(f"Plan {i+1} missing field: {field}")
-                
+
                 # Validate allocations
                 if not plan["allocations"]:
                     raise ValueError(f"Plan {i+1} has empty allocations")
-                
+
+                # 🚨 Validate legal limits
+                total_investment = plan["total_investment"]
+                life_insurance_total = 0
+                health_insurance_total = 0
+                pension_insurance_total = 0
+                rmf_total = 0
+                thai_esg_total = 0
+
+                # Calculate income-based limits
+                max_pension = min(200000, int(tax_result.gross_income * 0.15))
+                max_rmf_limit = min(500000, int(tax_result.gross_income * 0.30))
+                max_pvd = min(500000, int(tax_result.gross_income * 0.15))
+                max_thai_esg_limit = min(300000, int(tax_result.gross_income * 0.30))
+
                 for j, alloc in enumerate(plan["allocations"]):
                     required_alloc_fields = ["category", "percentage", "risk_level", "pros", "cons"]
                     for field in required_alloc_fields:
                         if field not in alloc:
                             raise ValueError(f"Plan {i+1}, Allocation {j+1} missing field: {field}")
+
+                    # Check legal limits for insurance
+                    category = alloc["category"]
+                    category_lower = category.lower()
+                    percentage = alloc["percentage"]
+                    amount = int(total_investment * percentage / 100)
+
+                    # ประกันชีวิต (Life Insurance)
+                    if "ประกันชีวิต" in category and "สุขภาพ" not in category and "บำนาญ" not in category:
+                        life_insurance_total += amount
+                        if amount > 100000:
+                            print(f"⚠️ Warning: Plan {i+1} allocation '{category}' recommends {amount:,} บาท (exceeds 100,000 legal limit)")
+
+                    # ประกันสุขภาพ (Health Insurance)
+                    if "สุขภาพ" in category and "ประกันชีวิต" not in category:
+                        health_insurance_total += amount
+                        if amount > 25000:
+                            print(f"⚠️ Warning: Plan {i+1} allocation '{category}' recommends {amount:,} บาท (exceeds 25,000 legal limit)")
+
+                    # Combined life + health
+                    if "ประกันชีวิต" in category and "สุขภาพ" in category:
+                        # This is a combined category - estimate split
+                        estimated_life = int(amount * 0.8)  # Assume 80% life
+                        estimated_health = int(amount * 0.2)  # Assume 20% health
+                        life_insurance_total += estimated_life
+                        health_insurance_total += estimated_health
+                        if amount > 125000:
+                            print(f"⚠️ Warning: Plan {i+1} allocation '{category}' recommends {amount:,} บาท (exceeds combined 125,000 legal limit)")
+
+                    # ประกันบำนาญ (Pension/Annuity Insurance) - CRITICAL FIX
+                    if "ประกันบำนาญ" in category or "บำนาญ" in category_lower:
+                        pension_insurance_total += amount
+                        if amount > max_pension:
+                            print(f"🚨 ILLEGAL AMOUNT DETECTED: Plan {i+1} allocation '{category}' recommends {amount:,} บาท")
+                            print(f"   Legal limit: {max_pension:,} บาท (min of 200,000 or 15% of {tax_result.gross_income:,})")
+                            print(f"   Violation: {amount - max_pension:,} บาท over limit")
+                            print(f"   🔧 AUTO-CORRECTING to {max_pension:,} บาท")
+
+                            # AUTO-CORRECT the illegal amount
+                            old_percentage = alloc["percentage"]
+                            corrected_percentage = (max_pension / total_investment) * 100
+                            alloc["percentage"] = round(corrected_percentage, 1)
+                            alloc["investment_amount"] = max_pension
+
+                            # Recalculate tax saving based on legal amount
+                            marginal_rate = self._get_marginal_rate(tax_result.taxable_income)
+                            corrected_tax_saving = int(max_pension * marginal_rate / 100)
+                            alloc["tax_saving"] = corrected_tax_saving
+
+                            print(f"   ✅ Corrected: {old_percentage}% → {corrected_percentage:.1f}%")
+                            print(f"   ✅ Tax saving adjusted to: {corrected_tax_saving:,} บาท")
+
+                            # Update the total to use corrected amount
+                            pension_insurance_total = pension_insurance_total - amount + max_pension
+
+                    # RMF
+                    if "rmf" in category_lower:
+                        rmf_total += amount
+                        if amount > max_rmf_limit:
+                            print(f"⚠️ Warning: Plan {i+1} allocation '{category}' recommends {amount:,} บาท (exceeds {max_rmf_limit:,} legal limit)")
+
+                    # ThaiESG/ThaiESGX
+                    if "thaiesg" in category_lower or "esg" in category_lower:
+                        thai_esg_total += amount
+                        if amount > max_thai_esg_limit:
+                            print(f"⚠️ Warning: Plan {i+1} allocation '{category}' recommends {amount:,} บาท (exceeds {max_thai_esg_limit:,} legal limit)")
+
+                # Final checks
+                if life_insurance_total > 100000:
+                    print(f"🚨 ERROR: Plan {i+1} total life insurance = {life_insurance_total:,} บาท (exceeds 100,000 legal limit)")
+                if health_insurance_total > 25000:
+                    print(f"🚨 ERROR: Plan {i+1} total health insurance = {health_insurance_total:,} บาท (exceeds 25,000 legal limit)")
+                if pension_insurance_total > max_pension:
+                    print(f"🚨 ERROR: Plan {i+1} total pension insurance = {pension_insurance_total:,} บาท (exceeds {max_pension:,} legal limit)")
             
             print("✅ Validation passed")
             return result

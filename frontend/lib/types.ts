@@ -75,24 +75,36 @@ export interface TaxCalculationResult {
   requires_optimization: boolean;
 }
 
-export interface Recommendation {
-  strategy: string;
-  description: string;
+// Backend API Response Types (matching backend/app/models.py)
+
+export interface AllocationItem {
+  category: string;
   investment_amount: number;
+  percentage: number;
   tax_saving: number;
   risk_level: string;
-  expected_return_1y: number | null;
-  expected_return_3y: number | null;
-  expected_return_5y: number | null;
   pros: string[];
   cons: string[];
 }
 
-export interface TaxOptimizationResponse {
-  current_tax: TaxCalculationResult;
-  recommendations: Recommendation[];
-  summary: string;
-  disclaimer: string;
+export interface InvestmentPlan {
+  plan_id: string;
+  plan_name: string;
+  plan_type: string;
+  description: string;
+  total_investment: number;
+  total_tax_saving: number;
+  overall_risk: string;
+  allocations: AllocationItem[];
+}
+
+export interface MultiplePlansResponse {
+  plans: InvestmentPlan[];
+}
+
+export interface TaxCalculationResponse {
+  tax_result: TaxCalculationResult;
+  investment_plans: MultiplePlansResponse;
 }
 
 // Helper function สำหรับแปลง SimplifiedFormData เป็น TaxCalculationRequest

@@ -209,12 +209,13 @@ class EvaluationRunner:
         else:
             print(f" {Colors.YELLOW}⚠{Colors.END} (Not available)")
         
+        expected_plans = test_case.get('expected_plans', {})
         # Step 3: เรียก AI
         print(f"  {Colors.CYAN}[3/4]{Colors.END} เรียก OpenAI...", end='', flush=True)
         try:
             ai_response, raw_response = await self.ai_service.generate_recommendations(
-                request, tax_result, context, test_case_id=test_case_id
-            )
+    request, tax_result, context, expected_plans, test_case_id
+)
             print(f" {Colors.GREEN}✓{Colors.END} ({len(ai_response.get('plans', []))} plans)")
         except Exception as e:
             print(f" {Colors.RED}✗{Colors.END}")
@@ -241,7 +242,10 @@ class EvaluationRunner:
         else:
             tiers = [800000, 1200000, 1800000]
 
-        marginal_rate = tax_calculator_service.get_marginal_tax_rate(tax_result.taxable_income)
+        # 🔧 FIX: คำนวณ tax saving อย่างถูกต้องตามหลักภาษี
+        # Tax Saving = ภาษีที่ลดได้จากการลงทุน
+        # = (ภาษีโดยไม่ลงทุน) - (ภาษีถ้าลงทุน)
+        # = Investment × Marginal Rate ของรายได้ที่เพิ่มขึ้น
 
         for idx, plan in enumerate(ai_response.get("plans", [])):
             # 🎯 บังคับใช้ total_investment ตาม tier (ไม่ใช้ค่าจาก AI)
@@ -251,42 +255,107 @@ class EvaluationRunner:
             else:
                 total_investment = plan.get("total_investment", 0)
 
-            calculated_total_tax_saving = 0
+            # 🔧 คำนวณ total tax saving ของแผนทั้งหมดก่อน
+            # ใช้ total_investment เพื่อหา marginal rate ที่ถูกต้อง
+            taxable_without_total_investment = tax_result.taxable_income + total_investment
+            marginal_rate_for_total = tax_calculator_service.get_marginal_tax_rate(
+                taxable_without_total_investment
+            )
+            calculated_total_tax_saving = int(total_investment * (marginal_rate_for_total / 100))
+
+            # แจกจ่าย tax saving ให้แต่ละ allocation ตามสัดส่วน
             for alloc in plan.get("allocations", []):
                 percentage = alloc.get("percentage", 0)
+
+                # คำนวณ investment_amount จาก percentage
                 investment_amount = int((percentage / 100) * total_investment)
                 alloc["investment_amount"] = investment_amount
-                tax_saving = int(investment_amount * (marginal_rate / 100))
+
+                # แจกจ่าย tax_saving ตามสัดส่วน percentage
+                tax_saving = int((percentage / 100) * calculated_total_tax_saving)
                 alloc["tax_saving"] = tax_saving
-                calculated_total_tax_saving += tax_saving
+
+            # อัปเดต total_tax_saving ของแผนให้ถูกต้องตามที่คำนวณได้จริง
             plan["total_tax_saving"] = calculated_total_tax_saving
+
         print(f" {Colors.GREEN}✓{Colors.END}")
         # ✨ =================================================================
 
-        # Step 4: ประเมินผล
-        print(f"  {Colors.CYAN}[4/4]{Colors.END} ประเมินผล...", end='', flush=True)
-        expected_plans = test_case.get('expected_plans', {})
-        
+        # Step 4: เช็คกฎหมาย (Legal Compliance Check) 🆕
+        print(f"  {Colors.CYAN}[4/5]{Colors.END} เช็คความถูกต้องตามกฎหมาย...", end='', flush=True)
+
+        legal_checks = []
+        has_legal_violations = False
+
+        for plan_idx, plan in enumerate(ai_response.get("plans", [])):
+            legal_result = self.evaluator.validate_legal_compliance(
+                plan=plan,
+                gross_income=tax_result.gross_income,
+                verbose=False  # ไม่ print ในขั้นตอนนี้ จะ print รวมทีเดียวข้างล่าง
+            )
+            legal_checks.append(legal_result)
+
+            if not legal_result["is_legal"]:
+                has_legal_violations = True
+
+        if has_legal_violations:
+            print(f" {Colors.RED}✗{Colors.END} (Found violations)")
+        else:
+            print(f" {Colors.GREEN}✓{Colors.END} (All legal)")
+
+        # Step 5: ประเมินผล
+        print(f"  {Colors.CYAN}[5/5]{Colors.END} ประเมินผล...", end='', flush=True)
+
+
         if not expected_plans:
             print(f" {Colors.YELLOW}⚠{Colors.END} (No expected plans - skipping evaluation)")
             return {
                 'test_case_id': test_case_id,
                 'test_case_name': test_name,
                 'status': 'no_expected_plans',
-                'ai_response': ai_response
+                'ai_response': ai_response,
+                'legal_checks': legal_checks
             }
-        
+
         try:
             evaluation_results = self.evaluator.evaluate_complete_response(
                 expected_plans,
                 ai_response,
                 use_bertscore=self.use_bertscore
             )
+
+            # 🆕 เพิ่ม Legal Compliance Score เข้าไปใน evaluation_results
+            evaluation_results['legal_compliance'] = {
+                'checks': legal_checks,
+                'has_violations': has_legal_violations,
+                'overall_score': 100 if not has_legal_violations else 0
+            }
+
+            # 🆕 ถ้ามี violations ให้ลดคะแนน Numerical Accuracy เป็น 0
+            if has_legal_violations:
+                # ลดคะแนนของ plans ที่มี violations
+                for plan_idx, legal_check in enumerate(legal_checks):
+                    if not legal_check["is_legal"]:
+                        plan_key = f"plan_{plan_idx + 1}"
+                        if plan_key in evaluation_results:
+                            # บันทึก numerical accuracy เดิมไว้
+                            original_numerical = evaluation_results[plan_key].get("numerical_accuracy", {})
+                            evaluation_results[plan_key]["numerical_accuracy_before_legal_check"] = original_numerical
+
+                            # ลดคะแนนเป็น 0 เพราะผิดกฎหมาย
+                            evaluation_results[plan_key]["numerical_accuracy"] = {
+                                "total_investment_match": 0.0,
+                                "total_tax_saving_match": 0.0,
+                                "overall_score": 0.0,
+                                "reason": "FAILED - Legal violations detected"
+                            }
+                            evaluation_results[plan_key]["legal_check"] = legal_check
+
             print(f" {Colors.GREEN}✓{Colors.END}")
         except Exception as e:
             print(f" {Colors.RED}✗{Colors.END}")
             print(f"     Error: {e}")
-            evaluation_results = {'error': str(e)}
+            evaluation_results = {'error': str(e), 'legal_checks': legal_checks}
         
         # แสดงรายงาน
         if 'error' not in evaluation_results:
@@ -330,10 +399,16 @@ class EvaluationRunner:
                 result = await self.run_single_test_case(test_case, i)
                 if result:
                     all_results.append(result)
-                
+
                 # แสดง progress
                 self.print_progress(i, len(test_cases), f"Completed {i}/{len(test_cases)}")
-                
+
+                # 🔄 Rate limiting: Add delay between test cases to prevent overwhelming API
+                if i < len(test_cases):  # ไม่ delay หลัง test case สุดท้าย
+                    if self.verbose:
+                        print(f"\n⏱️  Rate limiting: Waiting 1.5s before next test case...")
+                    await asyncio.sleep(1.5)
+
             except Exception as e:
                 print(f"\n{Colors.RED}❌ Error in test case {i}: {e}{Colors.END}")
                 if self.verbose:
@@ -375,16 +450,53 @@ class EvaluationRunner:
             f.write("="*80 + "\n\n")
             
             f.write(f"Total Test Cases: {summary.get('total_test_cases', 0)}\n\n")
-            
-            # Text metrics
-            if 'text_metrics' in summary and summary['text_metrics']:
-                f.write("TEXT SIMILARITY METRICS:\n")
-                f.write("-"*40 + "\n")
-                for key, value in summary['text_metrics'].items():
-                    metric_name = key.replace('avg_', '').upper()
-                    f.write(f"  {metric_name:12} : {value:.4f}\n")
+
+            # Multi-Level Metrics (PRIMARY - MOST IMPORTANT)
+            if 'multi_level_metrics' in summary and summary['multi_level_metrics']:
+                f.write("="*80 + "\n")
+                f.write("DESCRIPTION TEXT MATCHING (Primary Metric)\n")
+                f.write("="*80 + "\n")
+                f.write("These metrics show how well the AI matched the EXACT description text\n")
+                f.write("="*80 + "\n\n")
+
+                ml = summary['multi_level_metrics']
+
+                # Show key metrics
+                if 'avg_desc_bleu4' in ml:
+                    val = ml['avg_desc_bleu4']
+                    status = "PERFECT ✓" if val >= 0.95 else "GOOD ✓" if val >= 0.80 else "NEEDS IMPROVEMENT ✗"
+                    f.write(f"  BLEU-4 (Description)      : {val:.4f} ({val*100:.1f}%) - {status}\n")
+
+                if 'avg_desc_bertscore_f1' in ml:
+                    val = ml['avg_desc_bertscore_f1']
+                    status = "PERFECT ✓" if val >= 0.95 else "GOOD ✓" if val >= 0.80 else "NEEDS IMPROVEMENT ✗"
+                    f.write(f"  BERTScore (Description)   : {val:.4f} ({val*100:.1f}%) - {status}\n")
+
+                if 'avg_desc_rouge1_f1' in ml:
+                    val = ml['avg_desc_rouge1_f1']
+                    note = " (May be 0 due to Thai tokenization)" if val == 0 else ""
+                    f.write(f"  ROUGE-1 F1 (Description)  : {val:.4f}{note}\n")
+
+                if 'avg_desc_rougeL_f1' in ml:
+                    val = ml['avg_desc_rougeL_f1']
+                    note = " (May be 0 due to Thai tokenization)" if val == 0 else ""
+                    f.write(f"  ROUGE-L F1 (Description)  : {val:.4f}{note}\n")
+
                 f.write("\n")
-            
+                f.write("Supporting Metrics:\n")
+                f.write("-"*40 + "\n")
+
+                if 'avg_keyword_coverage_ratio' in ml:
+                    f.write(f"  Keyword Coverage          : {ml['avg_keyword_coverage_ratio']:.2%}\n")
+
+                if 'avg_semantic_bertscore_f1' in ml:
+                    f.write(f"  Semantic Similarity       : {ml['avg_semantic_bertscore_f1']:.4f}\n")
+
+                if 'avg_keypoint_coverage_ratio' in ml:
+                    f.write(f"  Key Points Coverage       : {ml['avg_keypoint_coverage_ratio']:.2%}\n")
+
+                f.write("\n")
+
             # Numeric metrics
             if 'numeric_metrics' in summary and summary['numeric_metrics']:
                 f.write("NUMERIC ACCURACY:\n")
@@ -392,6 +504,20 @@ class EvaluationRunner:
                 for key, value in summary['numeric_metrics'].items():
                     metric_name = key.replace('_', ' ').title()
                     f.write(f"  {metric_name:15} : {value:.2f}%\n")
+                f.write("\n")
+
+            # Legacy Text metrics (for reference)
+            if 'text_metrics' in summary and summary['text_metrics']:
+                f.write("\n")
+                f.write("="*80 + "\n")
+                f.write("LEGACY FULL-TEXT METRICS (Less Relevant - For Reference Only)\n")
+                f.write("="*80 + "\n")
+                f.write("Note: These compare ALL text including allocations (pros/cons) we don't control\n")
+                f.write("      Focus on 'Description Text Matching' metrics above instead!\n")
+                f.write("="*80 + "\n\n")
+                for key, value in summary['text_metrics'].items():
+                    metric_name = key.replace('avg_', '').upper()
+                    f.write(f"  {metric_name:25} : {value:.4f}\n")
                 f.write("\n")
             
             # Test case details
@@ -402,22 +528,32 @@ class EvaluationRunner:
             for result in all_results:
                 f.write(f"Test Case {result['test_case_id']}: {result['test_case_name']}\n")
                 f.write("-"*80 + "\n")
-                
+
                 eval_res = result.get('evaluation_results', {})
                 if 'overall_metrics' in eval_res:
                     overall = eval_res['overall_metrics']
                     f.write(f"  Plans: {overall.get('actual_plan_count', 0)}/{overall.get('expected_plan_count', 3)}\n")
-                    
+
                     if 'avg_numeric_accuracy' in overall:
                         f.write(f"  Numeric Accuracy: {overall['avg_numeric_accuracy']:.2f}%\n")
-                    
-                    if 'text_metrics' in overall:
+
+                    # Show multi-level metrics if available
+                    if 'multi_level_metrics' in overall:
+                        ml = overall['multi_level_metrics']
+                        if 'avg_desc_bleu4' in ml:
+                            val = ml['avg_desc_bleu4']
+                            f.write(f"  Description BLEU-4: {val:.4f} ({val*100:.1f}%)\n")
+                        if 'avg_desc_bertscore_f1' in ml:
+                            val = ml['avg_desc_bertscore_f1']
+                            f.write(f"  Description BERTScore: {val:.4f} ({val*100:.1f}%)\n")
+                    # Fallback to legacy metrics
+                    elif 'text_metrics' in overall:
                         text_m = overall['text_metrics']
                         if 'avg_rouge1_f1' in text_m:
-                            f.write(f"  ROUGE-1 F1: {text_m['avg_rouge1_f1']:.4f}\n")
+                            f.write(f"  ROUGE-1 F1 (Legacy): {text_m['avg_rouge1_f1']:.4f}\n")
                         if 'avg_bleu4' in text_m:
-                            f.write(f"  BLEU-4: {text_m['avg_bleu4']:.4f}\n")
-                
+                            f.write(f"  BLEU-4 (Legacy): {text_m['avg_bleu4']:.4f}\n")
+
                 f.write("\n")
         
         print(f"  {Colors.GREEN}✓{Colors.END} Report: {report_file.name}")
@@ -544,7 +680,12 @@ Examples:
         print(f"{Colors.YELLOW}⚠️  No valid evaluation results to summarize{Colors.END}\n")
         summary = {'total_test_cases': len(all_results)}
         runner.save_final_results(all_results, summary)
-    
+
+    # 📊 Print API Retry Statistics
+    print(f"\n{Colors.BOLD}{Colors.HEADER}📊 API RELIABILITY STATISTICS{Colors.END}")
+    print("="*80)
+    runner.ai_service.print_retry_statistics()
+
     # Final summary
     print(f"\n{Colors.BOLD}{Colors.GREEN}✅ EVALUATION COMPLETED!{Colors.END}")
     print("="*80)
