@@ -127,10 +127,10 @@ async def calculate_tax_with_multiple_plans(
         else:
             tiers = [800000, 1200000, 1800000]
 
-        # 🔧 FIX: คำนวณ tax saving อย่างถูกต้องตามหลักภาษี
+        # 🔧 คำนวณ tax saving อย่างถูกต้องตามหลักภาษี Progressive Tax
         # Tax Saving = ภาษีที่ลดได้จากการลงทุน
         # = (ภาษีโดยไม่ลงทุน) - (ภาษีถ้าลงทุน)
-        # = Investment × Marginal Rate ของรายได้ที่เพิ่มขึ้น
+        # ✅ ใช้ Multi-Bracket Calculation (ไม่ใช่ Simple Marginal Rate!)
 
         # วนลูปทุกแผนที่ AI ส่งมา และบังคับใช้ tier values
         for idx, plan in enumerate(investment_plans.get("plans", [])):
@@ -141,13 +141,12 @@ async def calculate_tax_with_multiple_plans(
             else:
                 total_investment = plan.get("total_investment", 0)
 
-            # 🔧 คำนวณ total tax saving ของแผนทั้งหมดก่อน
-            # ใช้ total_investment เพื่อหา marginal rate ที่ถูกต้อง
-            taxable_without_total_investment = tax_result.taxable_income + total_investment
-            marginal_rate_for_total = tax_calculator_service.get_marginal_tax_rate(
-                taxable_without_total_investment
+            # ✅ คำนวณ total tax saving ของแผนทั้งหมดอย่างถูกต้อง
+            # ใช้ฟังก์ชัน calculate_tax_saving_accurate() ที่คำนวณแบบ Multi-Bracket
+            calculated_total_tax_saving = tax_calculator_service.calculate_tax_saving_accurate(
+                taxable_base=tax_result.taxable_income,
+                investment=total_investment
             )
-            calculated_total_tax_saving = int(total_investment * (marginal_rate_for_total / 100))
 
             # แจกจ่าย tax saving ให้แต่ละ allocation ตามสัดส่วน
             for alloc in plan.get("allocations", []):

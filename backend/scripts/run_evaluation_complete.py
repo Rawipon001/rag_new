@@ -248,40 +248,31 @@ class EvaluationRunner:
         # = Investment × Marginal Rate ของรายได้ที่เพิ่มขึ้น
 
         for idx, plan in enumerate(ai_response.get("plans", [])):
-            # 🎯 บังคับใช้ total_investment ตาม tier (ไม่ใช้ค่าจาก AI)
+                        # 🎯 บังคับใช้ total_investment ตาม tier (ไม่ใช้ค่าจาก AI)
+
             if idx < len(tiers):
                 total_investment = tiers[idx]
-                plan["total_investment"] = total_investment  # Override AI's value
+                plan["total_investment"] = total_investment 
             else:
                 total_investment = plan.get("total_investment", 0)
 
-            # 🔧 คำนวณ total tax saving ของแผนทั้งหมดก่อน
-            # ใช้ total_investment เพื่อหา marginal rate ที่ถูกต้อง
             taxable_without_total_investment = tax_result.taxable_income + total_investment
             marginal_rate_for_total = tax_calculator_service.get_marginal_tax_rate(
                 taxable_without_total_investment
             )
             calculated_total_tax_saving = int(total_investment * (marginal_rate_for_total / 100))
 
-            # แจกจ่าย tax saving ให้แต่ละ allocation ตามสัดส่วน
             for alloc in plan.get("allocations", []):
                 percentage = alloc.get("percentage", 0)
-
-                # คำนวณ investment_amount จาก percentage
                 investment_amount = int((percentage / 100) * total_investment)
                 alloc["investment_amount"] = investment_amount
-
-                # แจกจ่าย tax_saving ตามสัดส่วน percentage
                 tax_saving = int((percentage / 100) * calculated_total_tax_saving)
                 alloc["tax_saving"] = tax_saving
-
-            # อัปเดต total_tax_saving ของแผนให้ถูกต้องตามที่คำนวณได้จริง
             plan["total_tax_saving"] = calculated_total_tax_saving
-
         print(f" {Colors.GREEN}✓{Colors.END}")
         # ✨ =================================================================
 
-        # Step 4: เช็คกฎหมาย (Legal Compliance Check) 🆕
+        # Step 4 เช็คกฎหมาย 
         print(f"  {Colors.CYAN}[4/5]{Colors.END} เช็คความถูกต้องตามกฎหมาย...", end='', flush=True)
 
         legal_checks = []
@@ -303,7 +294,7 @@ class EvaluationRunner:
         else:
             print(f" {Colors.GREEN}✓{Colors.END} (All legal)")
 
-        # Step 5: ประเมินผล
+        # Step 5 ประเมิน
         print(f"  {Colors.CYAN}[5/5]{Colors.END} ประเมินผล...", end='', flush=True)
 
 
@@ -429,19 +420,16 @@ class EvaluationRunner:
         print(f"\n{Colors.BOLD}💾 SAVING RESULTS{Colors.END}")
         print("─"*80)
         
-        # 1. Detailed Results
         detailed_file = self.results_dir / f"detailed_results_{timestamp}.json"
         with open(detailed_file, 'w', encoding='utf-8') as f:
             json.dump(all_results, f, indent=2, ensure_ascii=False)
         print(f"  {Colors.GREEN}✓{Colors.END} Detailed results: {detailed_file.name}")
         
-        # 2. Summary
         summary_file = self.results_dir / f"summary_{timestamp}.json"
         with open(summary_file, 'w', encoding='utf-8') as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
         print(f"  {Colors.GREEN}✓{Colors.END} Summary: {summary_file.name}")
-        
-        # 3. Human-readable Report
+    
         report_file = self.results_dir / f"report_{timestamp}.txt"
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write("="*80 + "\n")
@@ -451,7 +439,6 @@ class EvaluationRunner:
             
             f.write(f"Total Test Cases: {summary.get('total_test_cases', 0)}\n\n")
 
-            # Multi-Level Metrics (PRIMARY - MOST IMPORTANT)
             if 'multi_level_metrics' in summary and summary['multi_level_metrics']:
                 f.write("="*80 + "\n")
                 f.write("DESCRIPTION TEXT MATCHING (Primary Metric)\n")

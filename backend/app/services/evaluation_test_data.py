@@ -60,7 +60,7 @@ class EvaluationTestData:
         "expected_plans": {
             "plan_1": {
                 "total_investment": 60000,
-                "total_tax_saving": 6000,  # 316K + 60K = 376K (10% bracket) → 60K × 10% = 6,000
+                "total_tax_saving": 3800,  # Taxable 316K, Tax Before: 9,100, Tax After: 5,300, Saving: 3,800
                 "expected_text": {
                     "description": "เน้นความคุ้มครอง เงินลงทุนพอเหมาะสำหรับรายได้ระดับกลาง",
                     "plan_name": "ทางเลือกที่ 1 - เน้นประกัน",
@@ -99,7 +99,7 @@ class EvaluationTestData:
             },
             "plan_2": {
                 "total_investment": 100000,
-                "total_tax_saving": 10000,  # 316K + 100K = 416K (10% bracket) → 100K × 10% = 10,000
+                "total_tax_saving": 5800,  # Taxable 316K, Tax Before: 9,100, Tax After: 3,300, Saving: 5,800
                 "expected_text": {
                     "description": "กระจายความเสี่ยง เน้นการลงทุนแบบสมดุลระหว่างประกันและกองทุน",
                     "plan_name": "ทางเลือกที่ 2 - สมดุล",
@@ -130,7 +130,7 @@ class EvaluationTestData:
             },
             "plan_3": {
                 "total_investment": 150000,
-                "total_tax_saving": 15000,  # 316K + 150K = 466K (10% bracket) → 150K × 10% = 15,000
+                "total_tax_saving": 8300,  # Taxable 316K, Tax Before: 9,100, Tax After: 800, Saving: 8,300
                 "expected_text": {
                     "description": "เน้นลดหย่อนภาษีสูงสุด ใช้วงเงินลงทุนเต็มที่สำหรับผลประโยชน์ทางภาษีสูงสุด",
                     "plan_name": "ทางเลือกที่ 3 - เน้นการเติบโต",
@@ -936,7 +936,7 @@ class EvaluationTestData:
         "expected_plans": {
             "plan_1": {
                 "total_investment": 800000,
-                "total_tax_saving": 200000,  # 715K + 800K = 1,515K (25% bracket) → 800K × 25% = 200,000
+                "total_tax_saving": 120000,  
                 "expected_text": {
                     "description": "เน้นการลงทุน เพิ่มผลตอบแทนแบบรับความเสี่ยง",
                     "plan_name": "ทางเลือกที่ 1 - เน้นประกัน",
@@ -975,7 +975,7 @@ class EvaluationTestData:
             },
             "plan_2": {
                 "total_investment": 1200000,
-                "total_tax_saving": 300000,  # 715K + 1,200K = 1,915K (25% bracket) → 1,200K × 25% = 300,000
+                "total_tax_saving": 59750,  # Taxable 715K, ลงทุนเกิน! ลดได้แค่ 715K, Tax Saving = 59,750
                 "expected_text": {
                     "description": "เน้นการลงทุนแบบก้าวร้าว กระจายในกองทุนหุ้นและตราสารทุน",
                     "plan_name": "ทางเลือกที่ 2 - สมดุล",
@@ -1006,7 +1006,7 @@ class EvaluationTestData:
             },
             "plan_3": {
                 "total_investment": 1800000,
-                "total_tax_saving": 540000,  # 715K + 1,800K = 2,515K (30% bracket) → 1,800K × 30% = 540,000
+                "total_tax_saving": 59750,  # Taxable 715K, ลงทุนเกิน! ลดได้แค่ 715K, Tax Saving = 59,750
                 "expected_text": {
                     "description": "เน้นผลตอบแทนและลดหย่อนภาษีสูงสุด ลงทุนในตราสารทุนเต็มที่",
                     "plan_name": "ทางเลือกที่ 3 - เน้นการเติบโต",
@@ -1083,7 +1083,7 @@ class EvaluationTestData:
         "expected_plans": {
             "plan_1": {
                 "total_investment": 60000,
-                "total_tax_saving": 6000,  # Taxable: 337K (10% bracket) → 60K × 10% = 6,000
+                "total_tax_saving": 4850,  # Taxable 337,000, Tax Before: 11,200, Saving: 4,850
                 "expected_text": {
                     "description": "เน้นความคุ้มครอง เงินลงทุนพอเหมาะสำหรับรายได้ระดับกลาง",
                     "plan_name": "ทางเลือกที่ 1 - เน้นประกัน",
@@ -1122,7 +1122,7 @@ class EvaluationTestData:
             },
             "plan_2": {
                 "total_investment": 100000,
-                "total_tax_saving": 10000,  # Taxable: 337K (10% bracket) → 100K × 10% = 10,000
+                "total_tax_saving": 6850,  # Taxable 337,000, Tax Before: 11,200, Saving: 6,850
                 "expected_text": {
                     "description": "กระจายความเสี่ยง เน้นการลงทุนแบบสมดุลระหว่างประกันและกองทุน",
                     "plan_name": "ทางเลือกที่ 2 - สมดุล",
@@ -1153,7 +1153,7 @@ class EvaluationTestData:
             },
             "plan_3": {
                 "total_investment": 150000,
-                "total_tax_saving": 15000,  # Taxable: 337K (10% bracket) → 150K × 10% = 15,000
+                "total_tax_saving": 9350,  # Taxable 337,000, Tax Before: 11,200, Saving: 9,350
                 "expected_text": {
                     "description": "เน้นลดหย่อนภาษีสูงสุด ใช้วงเงินลงทุนเต็มที่สำหรับผลประโยชน์ทางภาษีสูงสุด",
                     "plan_name": "ทางเลือกที่ 3 - เน้นการเติบโต",
@@ -1230,7 +1230,7 @@ class EvaluationTestData:
         "expected_plans": {
             "plan_1": {
                 "total_investment": 300000,
-                "total_tax_saving": 75000,  # Taxable: 725K (15% bracket, but AMT 0.5% applies) → 300K × 25% = 75,000
+                "total_tax_saving": 53750,  # Taxable 925,000, Tax Before: 100,000, Saving: 53,750
                 "expected_text": {
                     "description": "เน้นการลงทุน เพิ่มผลตอบแทนแบบรับความเสี่ยง",
                     "plan_name": "ทางเลือกที่ 1 - เน้นประกัน",
@@ -1269,7 +1269,7 @@ class EvaluationTestData:
             },
             "plan_2": {
                 "total_investment": 500000,
-                "total_tax_saving": 125000,  # Taxable: 725K (15% bracket, but AMT 0.5% applies) → 500K × 25% = 125,000
+                "total_tax_saving": 80000,  # Taxable 925,000, Tax Before: 100,000, Saving: 80,000
                 "expected_text": {
                     "description": "เน้นการลงทุนแบบก้าวร้าว กระจายในกองทุนหุ้นและตราสารทุน",
                     "plan_name": "ทางเลือกที่ 2 - สมดุล",
@@ -1300,7 +1300,7 @@ class EvaluationTestData:
             },
             "plan_3": {
                 "total_investment": 800000,
-                "total_tax_saving": 200000,  # Taxable: 725K (15% bracket, but AMT 0.5% applies) → 800K × 25% = 200,000
+                "total_tax_saving": 100000,  # Taxable 925,000, Tax Before: 100,000, Saving: 100,000
                 "expected_text": {
                     "description": "เน้นผลตอบแทนและลดหย่อนภาษีสูงสุด ลงทุนในตราสารทุนเต็มที่",
                     "plan_name": "ทางเลือกที่ 3 - เน้นการเติบโต",
@@ -1674,7 +1674,7 @@ class EvaluationTestData:
         "expected_plans": {
             "plan_1": {
                 "total_investment": 300000,
-                "total_tax_saving": 0,  # Taxable: 85K (0% bracket) → No tax saving
+                "total_tax_saving": 5750,  # Taxable 265,000, Tax Before: 5,750, Saving: 5,750
                 "expected_text": {
                     "description": "เน้นความคุ้มครอง เงินลงทุนพอเหมาะสำหรับรายได้ระดับกลาง",
                     "plan_name": "ทางเลือกที่ 1 - เน้นประกัน",
@@ -1713,7 +1713,7 @@ class EvaluationTestData:
             },
             "plan_2": {
                 "total_investment": 500000,
-                "total_tax_saving": 0,  # Taxable: 85K (0% bracket) → No tax saving
+                "total_tax_saving": 5750,  # Taxable 265,000, Tax Before: 5,750, Saving: 5,750
                 "expected_text": {
                     "description": "กระจายความเสี่ยง เน้นการลงทุนแบบสมดุลระหว่างประกันและกองทุน",
                     "plan_name": "ทางเลือกที่ 2 - สมดุล",
@@ -1744,7 +1744,7 @@ class EvaluationTestData:
             },
             "plan_3": {
                 "total_investment": 800000,
-                "total_tax_saving": 0,  # Taxable: 85K (0% bracket) → No tax saving
+                "total_tax_saving": 5750,  # Taxable 265,000, Tax Before: 5,750, Saving: 5,750
                 "expected_text": {
                     "description": "เน้นลดหย่อนภาษีสูงสุด ใช้วงเงินลงทุนเต็มที่สำหรับผลประโยชน์ทางภาษีสูงสุด",
                     "plan_name": "ทางเลือกที่ 3 - เน้นการเติบโต",
@@ -2266,7 +2266,7 @@ class EvaluationTestData:
         "expected_plans": {
             "plan_1": {
                 "total_investment": 500000,
-                "total_tax_saving": 100000,  # Taxable: 285K (with AMT) → 500K × 20% = 100,000
+                "total_tax_saving": 37250,  # Taxable 265,000, Tax Before: 37,250, Saving: 37,250
                 "expected_text": {
                     "description": "เน้นการลงทุน เพิ่มผลตอบแทนแบบรับความเสี่ยง",
                     "plan_name": "ทางเลือกที่ 1 - เน้นประกัน",
@@ -2305,7 +2305,7 @@ class EvaluationTestData:
             },
             "plan_2": {
                 "total_investment": 800000,
-                "total_tax_saving": 200000,  # Taxable: 285K (with AMT) → 800K × 25% = 200,000
+                "total_tax_saving": 37250,  # Taxable 265,000, Tax Before: 37,250, Saving: 37,250
                 "expected_text": {
                     "description": "เน้นการลงทุนแบบก้าวร้าว กระจายในกองทุนหุ้นและตราสารทุน",
                     "plan_name": "ทางเลือกที่ 2 - สมดุล",
@@ -2336,7 +2336,7 @@ class EvaluationTestData:
             },
             "plan_3": {
                 "total_investment": 1200000,
-                "total_tax_saving": 300000,  # Taxable: 285K (with AMT) → 1,200K × 25% = 300,000
+                "total_tax_saving": 37250,  # Taxable 265,000, Tax Before: 37,250, Saving: 37,250
                 "expected_text": {
                     "description": "เน้นผลตอบแทนและลดหย่อนภาษีสูงสุด ลงทุนในตราสารทุนเต็มที่",
                     "plan_name": "ทางเลือกที่ 3 - เน้นการเติบโต",
@@ -2710,7 +2710,7 @@ class EvaluationTestData:
         "expected_plans": {
             "plan_1": {
                 "total_investment": 300000,
-                "total_tax_saving": 30000,  # Taxable: 165K (10% bracket) → 300K × 10% = 30,000
+                "total_tax_saving": 10000,  # Taxable 165,000, Tax Before: 10,000, Saving: 10,000
                 "expected_text": {
                     "description": "เน้นการลงทุน เพิ่มผลตอบแทนแบบรับความเสี่ยง",
                     "plan_name": "ทางเลือกที่ 1 - เน้นประกัน",
@@ -2749,7 +2749,7 @@ class EvaluationTestData:
             },
             "plan_2": {
                 "total_investment": 500000,
-                "total_tax_saving": 75000,  # Taxable: 165K (15% effective with AMT) → 500K × 15% = 75,000
+                "total_tax_saving": 10000,  # Taxable 165,000, Tax Before: 10,000, Saving: 10,000
                 "expected_text": {
                     "description": "เน้นการลงทุนแบบก้าวร้าว กระจายในกองทุนหุ้นและตราสารทุน",
                     "plan_name": "ทางเลือกที่ 2 - สมดุล",
@@ -2780,7 +2780,7 @@ class EvaluationTestData:
             },
             "plan_3": {
                 "total_investment": 800000,
-                "total_tax_saving": 160000,  # Taxable: 165K (20% effective with AMT) → 800K × 20% = 160,000
+                "total_tax_saving": 10000,  # Taxable 165,000, Tax Before: 10,000, Saving: 10,000
                 "expected_text": {
                     "description": "เน้นผลตอบแทนและลดหย่อนภาษีสูงสุด ลงทุนในตราสารทุนเต็มที่",
                     "plan_name": "ทางเลือกที่ 3 - เน้นการเติบโต",

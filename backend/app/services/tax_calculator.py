@@ -23,7 +23,7 @@ class TaxCalculatorService:
     2. คำนวณภาษีทั้ง 2 วิธี (จากเงินได้สุทธิ และ 0.5% ของเงินได้รวม)
     3. เสียภาษีตามจำนวนที่สูงกว่า
     """
-
+#ขั้นบันได
     TAX_BRACKETS = [
         (150000, 0),
         (300000, 5),
@@ -68,7 +68,7 @@ class TaxCalculatorService:
         if income_type == IncomeType.SECTION_40_5:
             return int(gross_income * 0.30)  # 30% (ค่า default)
 
-        # กรณี 40(6) - วิชาชีพอิสระ (หน้า 13)
+        # 40(6) อิสระ
         if income_type == IncomeType.SECTION_40_6:
             profession = request.profession_type
             if profession == ProfessionType.MEDICAL:
@@ -303,6 +303,41 @@ class TaxCalculatorService:
             if taxable_income <= bracket_limit:
                 return rate
         return 35
+
+    def calculate_tax_saving_accurate(self, taxable_base: int, investment: int) -> int:
+        """
+        คำนวณ Tax Saving อย่างถูกต้องด้วย Multi-Bracket Calculation
+
+        สูตรที่ถูกต้อง:
+        Tax Saving = ภาษีก่อนลงทุน - ภาษีหลังลงทุน
+
+        ไม่ใช่สูตรที่ผิด: investment × marginal_rate (ผิดเพราะไม่คำนึงถึงการข้าม bracket)
+
+        Args:
+            taxable_base: รายได้สุทธิที่ต้องเสียภาษี (ก่อนหักค่าลงทุน)
+            investment: จำนวนเงินลงทุนที่จะหักลดหย่อน
+
+        Returns:
+            int: จำนวนภาษีที่ลดได้ (Tax Saving)
+
+        Example:
+            >>> calculate_tax_saving_accurate(316000, 60000)
+            3800  # ไม่ใช่ 6000 (60k × 10%)
+        """
+        # คำนวณจำนวนเงินที่สามารถหักลดหย่อนได้จริง
+        # (ไม่เกิน taxable_base เพราะไม่สามารถหักจนติดลบได้)
+        actual_deduction = min(investment, taxable_base)
+
+        # คำนวณภาษีก่อนลงทุน
+        tax_before = self._calculate_progressive_tax(taxable_base)
+
+        # คำนวณภาษีหลังลงทุน (taxable_base ลดลง)
+        tax_after = self._calculate_progressive_tax(taxable_base - actual_deduction)
+
+        # Tax Saving = ภาษีที่ลดลงได้
+        tax_saving = tax_before - tax_after
+
+        return tax_saving
 
 
 # Export singleton

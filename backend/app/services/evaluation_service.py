@@ -109,7 +109,7 @@ class EvaluationService:
         violations = []
         warnings = []
 
-        # คำนวณขีดจำกัดตามกฎหมาย
+        # คำนวณเพดานตามกฎหมาย
         limits = {
             "pension_insurance": min(int(gross_income * 0.15), 200000),
             "rmf": min(int(gross_income * 0.30), 500000),
@@ -141,7 +141,7 @@ class EvaluationService:
             percentage = allocation.get("percentage", 0)
             amount = allocation.get("investment_amount")
 
-            # ถ้าไม่มี investment_amount ให้คำนวณจาก percentage
+            # ถ้าไม่มี nvestment_amountให้คำนวณจากpercentage
             if amount is None and total_investment > 0:
                 amount = int(total_investment * percentage / 100)
 
@@ -284,11 +284,9 @@ class EvaluationService:
     
     def calculate_rouge(self, reference: str, hypothesis: str) -> Dict[str, float]:
         """คำนวณ ROUGE scores - รองรับภาษาไทยด้วย word tokenization"""
-        # Tokenize Thai text first
         ref_tokens = self.tokenize_thai(reference)
         hyp_tokens = self.tokenize_thai(hypothesis)
 
-        # Join with spaces so ROUGE can process properly
         ref_text = ' '.join(ref_tokens)
         hyp_text = ' '.join(hyp_tokens)
 
@@ -445,6 +443,7 @@ class EvaluationService:
         
         return f"{emoji} {color}{bar}{Colors.END} {percentage:.1f}%"
     
+    #ประเมินแบบหลายชั้น ไม่ดูแค่ข้อความเดียว
     def evaluate_plan(self, expected_plan: Dict[str, Any], ai_plan: Dict[str, Any], use_bertscore: bool = False) -> Dict[str, Any]:
         """
         ประเมิน 1 แผนการลงทุนแบบ Multi-Level Evaluation
@@ -674,6 +673,7 @@ class EvaluationService:
         
         return results
     
+    #รวม3แผน
     def evaluate_complete_response(self, expected_plans: Dict[str, Dict], ai_response: Dict[str, Any], use_bertscore: bool = False) -> Dict[str, Any]:
         """ประเมินคำตอบทั้งหมด (3 แผน)"""
         results = {
@@ -903,7 +903,7 @@ class EvaluationService:
             with open(report_file, 'w', encoding='utf-8') as f:
                 json.dump(results, f, indent=2, ensure_ascii=False)
             print(f"{Colors.GREEN}💾 Report saved to: {report_file}{Colors.END}\n")
-    
+    ##ผลรวม 20 testcase
     def generate_summary_statistics(self, all_results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """สร้างสถิติสรุป - รวม Multi-Level Metrics"""
         summary = {
